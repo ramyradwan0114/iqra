@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <rect width="192" height="192" rx="36" fill="#0F5C4C"/>
+  <rect x="15" y="15" width="162" height="162" rx="24" fill="none" stroke="#E7C873" stroke-width="3" opacity="0.55"/>
+  <text x="96" y="113" text-anchor="middle"
+        font-family="Amiri Quran, Amiri, Traditional Arabic, serif"
+        font-size="79" fill="#F6F1E4">اقرأ</text>
+</svg>

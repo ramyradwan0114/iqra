@@ -1,0 +1,23 @@
+node_modules
+dist
+dist-ssr
+*.local
+.DS_Store
+.vite
+
+# مخرجات vite-plugin-pwa (بتتولّد وقت البناء)
+dev-dist
+public/sw.js
+public/workbox-*.js
+public/manifest.webmanifest
+
+*.log
+npm-debug.log*
+.env
+.env.*
+!.env.example
+.vscode/*
+!.vscode/extensions.json
+.idea
+
+.vercel

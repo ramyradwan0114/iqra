@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+  الخطوط
+  ------
+  طلبت @font-face لـ Amiri و Amiri Quran من Google Fonts. عن قصد مكتبتهاش
+  بروابط woff2 مباشرة: جوجل بتدوّر روابط ملفات الخطوط من غير إشعار، فالـ
+  @font-face المكتوب بإيدك بيقع بعد شهور من غير أي رسالة خطأ — الخط بيختفي
+  والنص العثماني يرجع لخط الجهاز.
+
+  بدلها بنحمّل ورقة أنماط جوجل نفسها من index.html (هي اللي فيها الـ @font-face
+  المحدَّث دايمًا)، وبنسيب الـ fallback هنا.
+
+  للأوفلاين الحقيقي (وده مهم في PWA): نزّل ملفات الخط واستضيفها بنفسك، وساعتها
+  اكتب @font-face هنا وشيل اللينك من index.html. مثال:
+
+    @font-face {
+      font-family: "Amiri Quran";
+      src: url("/fonts/AmiriQuran.woff2") format("woff2");
+      font-display: swap;
+    }
+*/
+
+:root {
+  --iqra-primary: #0f5c4c;
+  --iqra-secondary: #e7c873;
+  --iqra-bg: #f6f1e4;
+  --iqra-text: #1e2a24;
+  --font-ui: "Amiri", "Traditional Arabic", serif;
+  --font-quran: "Amiri Quran", "Amiri", "Traditional Arabic", serif;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--iqra-bg);
+    color: var(--iqra-text);
+    font-family: var(--font-ui);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* منع السحب المطاطي اللي بيقطع الرسم على الكانفاس */
+    overscroll-behavior-y: none;
+  }
+
+  /* الأرقام والنص العربي بيتقصّوا غلط لما الخط ميحمّلش — ده بيقلّل القفزة */
+  body,
+  button,
+  input {
+    font-family: var(--font-ui);
+  }
+
+  button {
+    font: inherit;
+    color: inherit;
+  }
+
+  /* منع تكبير iOS التلقائي عند التركيز على حقل إدخال */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+@layer utilities {
+  /* الكانفاس بتاع الكتابة اليدوية محتاج يمنع الـ scroll أثناء الرسم */
+  .touch-none {
+    touch-action: none;
+  }
+}
+
+/* شريط تمرير هادي يمشي مع لون التطبيق */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #f1ead6;
+}
+::-webkit-scrollbar-thumb {
+  background: #d8cead;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #c3ba9c;
+}
