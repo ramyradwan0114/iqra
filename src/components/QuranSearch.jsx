@@ -6,7 +6,7 @@ const QURAN_FONT = "'Amiri Quran', 'Amiri', 'Traditional Arabic', serif";
 const searchApi = (q, page = 1) =>
   `https://api.qurancdn.com/api/qdc/search?q=${encodeURIComponent(q)}&size=20&page=${page}`;
 
-export default function QuranSearch({ SURAHS, toArabicDigits, onPick, onClose }) {
+export default function QuranSearch({ SURAHS, toArabicDigits, onPick, onClose, startVoice: autoVoice }) {
   const [q, setQ] = useState("");
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -50,6 +50,14 @@ export default function QuranSearch({ SURAHS, toArabicDigits, onPick, onClose })
     }
   }, []);
 
+  // فتح مباشر في وضع الصوت (من زر 🎤 اللي فوق في المصحف)
+  useEffect(() => {
+    if (!autoVoice || !speechSupported()) return;
+    const t = setTimeout(() => startVoice(), 250);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoVoice]);
+
   const startVoice = () => {
     const rec = createRecognizer({ lang: "ar-SA", interim: false });
     if (!rec) return;
@@ -90,29 +98,41 @@ export default function QuranSearch({ SURAHS, toArabicDigits, onPick, onClose })
         className="bg-[#FFFDF6] dark:bg-[#243830] rounded-3xl border border-[#E4DCC3] dark:border-[#3A5148] w-full max-w-xl max-h-full flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="p-4 border-b border-[#E4DCC3] dark:border-[#3A5148] flex items-center gap-2">
-          <form
-            className="flex-1 flex items-center gap-2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              run(q);
-            }}
-          >
-            <input
-              autoFocus
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="اكتب كلمة أو جملة من القرآن…"
-              className="flex-1 bg-[#FBF8EF] dark:bg-[#1E2A24] border border-[#E4DCC3] dark:border-[#3A5148] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#0F5C4C]"
-            />
+        {/* خانة البحث أصغر، وزر الصوت جنبها من فوق وكبير على الموبايل */}
+        <div className="p-3 border-b border-[#E4DCC3] dark:border-[#3A5148]">
+          <div className="flex items-center gap-2">
+            <form
+              className="flex-1 flex items-center gap-2 min-w-0"
+              onSubmit={(e) => {
+                e.preventDefault();
+                run(q);
+              }}
+            >
+              <input
+                autoFocus={!autoVoice}
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="ابحث…"
+                className="flex-1 min-w-0 bg-[#FBF8EF] dark:bg-[#1E2A24] border border-[#E4DCC3] dark:border-[#3A5148] rounded-xl px-3 py-2 text-sm outline-none focus:border-[#0F5C4C]"
+              />
+              <button
+                type="submit"
+                className="shrink-0 w-11 h-11 grid place-items-center rounded-xl bg-[#0F5C4C] text-[#F6F1E4] text-lg"
+                aria-label="بحث"
+                title="بحث"
+              >
+                🔍
+              </button>
+            </form>
+
             {speechSupported() && (
               <button
                 type="button"
                 onClick={startVoice}
-                className={`w-10 h-10 grid place-items-center rounded-xl border ${
+                className={`shrink-0 w-14 h-14 grid place-items-center rounded-2xl border-2 text-2xl transition-colors ${
                   listening
                     ? "bg-[#8A4E4E] border-[#8A4E4E] text-[#F6F1E4] animate-pulse"
-                    : "border-[#E4DCC3] dark:border-[#3A5148]"
+                    : "bg-[#E7C873] border-[#E7C873] text-[#1E2A24]"
                 }`}
                 title="بحث صوتي"
                 aria-label="بحث صوتي"
@@ -120,16 +140,15 @@ export default function QuranSearch({ SURAHS, toArabicDigits, onPick, onClose })
                 🎤
               </button>
             )}
+
             <button
-              type="submit"
-              className="bg-[#0F5C4C] text-[#F6F1E4] px-4 py-2.5 rounded-xl font-bold text-sm"
+              onClick={onClose}
+              className="shrink-0 text-[#5B6B62] dark:text-[#A9BDB2] text-lg font-semibold px-1"
+              aria-label="إغلاق"
             >
-              بحث
+              ✕
             </button>
-          </form>
-          <button onClick={onClose} className="text-[#5B6B62] text-sm font-semibold px-1">
-            ✕
-          </button>
+          </div>
         </div>
 
         <div className="overflow-y-auto">

@@ -572,6 +572,8 @@ const AyahLine = React.memo(function AyahLine({
   activeRef,
   onTafsir,
   tafsirOpen,
+  isCurrent,
+  currentRef,
 }) {
   const { ayah, words, segments } = ayahData;
   const holdRef = useRef(null);
@@ -603,7 +605,20 @@ const AyahLine = React.memo(function AyahLine({
   };
 
   return (
-    <span id={`ayah-${ayah}`}>
+    <span
+      id={`ayah-${ayah}`}
+      ref={isCurrent ? currentRef : undefined}
+      // الآية اللي الشيخ بيقرأها دلوقتي: شريط أخضر حواليها.
+      // box-decoration-break عشان الإطار يفضل مقفول لو الآية اتقسمت
+      // على أكتر من سطر — من غيره بيبان مكسور في النص العربي المتدفّق.
+      className={
+        isCurrent
+          ? "bg-[#2E9E6B]/15 dark:bg-[#2E9E6B]/25 rounded-lg ring-1 ring-[#2E9E6B]/50 px-1 transition-colors"
+          : ""
+      }
+      style={isCurrent ? { boxDecorationBreak: "clone", WebkitBoxDecorationBreak: "clone" } : undefined}
+    >
+      {isCurrent && <span className="text-[#2E9E6B] text-[0.55em] align-middle ml-1">▶</span>}
       {words.map((w, i) => {
         const pos = i + 1;
         const key = `${ayah}:${pos}`;
@@ -764,6 +779,12 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma }) {
   const [reciteFor, setReciteFor] = useState(null); // { text, ayah }
   const [openTafsir, setOpenTafsir] = useState(null); // رقم الآية المفتوح تفسيرها
   const [searchOpen, setSearchOpen] = useState(false);
+  const [voiceSearch, setVoiceSearch] = useState(false);
+  const [currentAyah, setCurrentAyah] = useState(null);
+  const [following, setFollowing] = useState(false);
+  const currentAyahRef = useRef(null);
+  const userScrollRef = useRef(0); // آخر مرة مرّر المستخدم بإيده
+  const lastScrolledAyah = useRef(null);
   const [pendingAyah, setPendingAyah] = useState(null); // نروح لها بعد ما السورة تحمّل
   const [popup, setPopup] = useState(null); // { word, t, r, x, y }
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -855,6 +876,33 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma }) {
     },
     [data, stopAll]
   );
+  // بيبدأ التلاوة المستمرة من كلمة معيّنة لآخر السورة.
+  // بنستخدمها في زر التشغيل (من الأول) وفي القفز (seek) للآية اللي المستخدم
+  // يدوس عليها أثناء التلاوة.
+  const runFrom = useCallback(
+    (startMs) => {
+      if (!flat.length) return;
+      const last = flat[flat.length - 1].end;
+      let cursor = Math.max(0, flat.findIndex((w) => w.end > startMs));
+      let lastKey = null;
+      let lastAyah = null;
+      playSpan(startMs, last, 1, (ms) => {
+        while (cursor < flat.length - 1 && ms >= flat[cursor].end) cursor++;
+        const w = flat[cursor];
+        const key = ms >= w.start && ms < w.end ? `${w.ayah}:${w.pos}` : null;
+        if (key !== lastKey) {
+          lastKey = key;
+          setActiveWord(key);
+        }
+        if (w.ayah !== lastAyah) {
+          lastAyah = w.ayah;
+          setCurrentAyah(w.ayah);
+        }
+      });
+    },
+    [flat, playSpan]
+  );
+
   // تلاوة السورة كاملة مع تتبّع الكلمة الحالية.
   // بنستخدم مؤشّرًا زاحفًا مش بحث في كل إطار — التشغيل تصاعدي، فالمؤشّر
   // بيتقدّم للأمام بس. وبنحدّث الحالة لما الكلمة *تتغيّر* فقط، مش ٦٠ مرة في
@@ -863,18 +911,9 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma }) {
     if (!flat.length) return;
     setSelection(null);
     setRangeStart(null);
-    let cursor = 0;
-    let lastKey = null;
-    playSpan(flat[0].start, flat[flat.length - 1].end, 1, (ms) => {
-      while (cursor < flat.length - 1 && ms >= flat[cursor].end) cursor++;
-      const w = flat[cursor];
-      const key = ms >= w.start && ms < w.end ? `${w.ayah}:${w.pos}` : null;
-      if (key !== lastKey) {
-        lastKey = key;
-        setActiveWord(key);
-      }
-    });
-  }, [flat, playSpan]);
+    setFollowing(true);
+    runFrom(flat[0].start);
+  }, [flat, runFrom]);
 
   const handleWordTap = useCallback((ayah, pos) => {
     if (!data) return;
@@ -904,8 +943,17 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma }) {
     setSelection(null);
     setActiveWord(`${ayah}:${pos}`);
     buzz(15);
+
+    // أثناء التلاوة المستمرة: اللمس بينقل التلاوة للآية دي ويكمّل منها،
+    // مش بيشغّل الكلمة لوحدها.
+    if (following) {
+      setCurrentAyah(ayah);
+      userScrollRef.current = 0; // نرجّع المتابعة فورًا بعد قفزة مقصودة
+      runFrom(w.start);
+      return;
+    }
     playSpan(w.start, w.end, repeat);
-  }, [data, rangeMode, rangeStart, flat, repeat, playSpan]);
+  }, [data, rangeMode, rangeStart, flat, repeat, playSpan, following, runFrom]);
 
   // ضغطة طويلة → ترجمة الكلمة (من الكاش أو الشبكة)
   const handleWordHold = useCallback(
@@ -926,15 +974,54 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma }) {
     [data, surah]
   );
 
-  // تمرير تلقائي للكلمة المظللة — بس لو خرجت بره الشاشة، عشان
-  // مانقاطعش المستخدم وهو بيقرأ بنفسه
+  // لو المستخدم مرّر بإيده، بنوقف المتابعة ٣ ثواني عشان مانخطفش الشاشة منه
   useEffect(() => {
-    const el = activeElRef.current;
-    if (!el || !playing) return;
+    const mark = () => {
+      userScrollRef.current = Date.now();
+    };
+    window.addEventListener("wheel", mark, { passive: true });
+    window.addEventListener("touchmove", mark, { passive: true });
+    return () => {
+      window.removeEventListener("wheel", mark);
+      window.removeEventListener("touchmove", mark);
+    };
+  }, []);
+
+  // المتابعة أثناء التلاوة. سرعة التمرير بتحدّد إمتى نمرّر:
+  //   ayah  = مع كل آية      (الأبطأ، الأدق)
+  //   three = كل ٣ آيات
+  //   page  = لما الآية تخرج بره الشاشة (الأسرع، الأقل إزعاجًا)
+  const followMode = settings?.followMode || "ayah";
+
+  useEffect(() => {
+    if (!playing || !currentAyah) return;
+    if (Date.now() - userScrollRef.current < 3000) return; // مرّر بإيده لسه
+
+    const el = currentAyahRef.current;
+    if (!el) return;
     const r = el.getBoundingClientRect();
-    const outside = r.top < 80 || r.bottom > window.innerHeight - 80;
-    if (outside) el.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [activeWord, playing]);
+    const offscreen = r.top < 70 || r.bottom > window.innerHeight - 70;
+
+    let should = false;
+    if (followMode === "ayah") should = true;
+    else if (followMode === "three") {
+      const last = lastScrolledAyah.current;
+      should = last === null || currentAyah - last >= 3 || offscreen;
+    } else should = offscreen; // page
+
+    if (!should) return;
+    lastScrolledAyah.current = currentAyah;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [currentAyah, playing, followMode]);
+
+  // تنضيف المؤشّر لما التلاوة تقف
+  useEffect(() => {
+    if (!playing) {
+      setCurrentAyah(null);
+      setFollowing(false);
+      lastScrolledAyah.current = null;
+    }
+  }, [playing]);
 
   // بيانات التجويد بتتجاب عند الطلب بس
   useEffect(() => {
@@ -1016,11 +1103,26 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma }) {
             <span className="text-[#E7C873] text-xs">▾</span>
           </button>
           <button
-            onClick={() => setSearchOpen(true)}
-            className="rounded-xl px-4 py-2.5 font-bold border border-[#E4DCC3] dark:border-[#3A5148] text-[#5B6B62] dark:text-[#A9BDB2]"
+            onClick={() => {
+              setVoiceSearch(false);
+              setSearchOpen(true);
+            }}
+            className="rounded-xl px-3.5 py-2.5 font-bold border border-[#E4DCC3] dark:border-[#3A5148] text-[#5B6B62] dark:text-[#A9BDB2]"
             title="بحث في القرآن"
           >
-            بحث 🔍
+            🔍
+          </button>
+          {/* البحث الصوتي فوق ومباشر — مش مخبّي جوّه الشاشة */}
+          <button
+            onClick={() => {
+              setVoiceSearch(true);
+              setSearchOpen(true);
+            }}
+            className="rounded-xl w-12 h-11 grid place-items-center text-xl bg-[#E7C873] text-[#1E2A24] font-bold"
+            title="بحث صوتي"
+            aria-label="بحث صوتي"
+          >
+            🎤
           </button>
         </div>
         <span className="text-xs text-[#8A7A4E]">
@@ -1235,6 +1337,8 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma }) {
                 activeRef={activeElRef}
                 onTafsir={(n) => setOpenTafsir((cur) => (cur === n ? null : n))}
                 tafsirOpen={openTafsir === a.ayah}
+                isCurrent={playing && currentAyah === a.ayah}
+                currentRef={currentAyahRef}
               />
               {openTafsir === a.ayah && (
                 <TafsirAccordion
@@ -1258,10 +1362,45 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma }) {
           وفوري)، وباقي السور بتتجاب حيًّا وتتخزّن في الكاش.
         </p>
       </div>
+      {/* متحكّم سرعة التمرير — جنب الـ scrollbar، بيظهر أثناء التلاوة بس
+          عشان مايزحمش الشاشة وهو مش مستخدَم */}
+      {playing && (
+        <div
+          className="fixed left-1.5 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center gap-2 bg-[#FFFDF6]/95 dark:bg-[#243830]/95 border border-[#E4DCC3] dark:border-[#3A5148] rounded-full py-3 px-1.5 shadow-lg"
+          dir="ltr"
+        >
+          <span className="text-[9px] text-[#8A7A4E] writing-mode-vertical">بطيء</span>
+          {[
+            ["ayah", "آية آية", "•"],
+            ["three", "٣ آيات", "≡"],
+            ["page", "صفحة", "⤓"],
+          ].map(([mode, label, icon]) => (
+            <button
+              key={mode}
+              onClick={() => {
+                updateSettings?.({ followMode: mode });
+                lastScrolledAyah.current = null;
+              }}
+              className={`w-7 h-7 grid place-items-center rounded-full text-xs font-bold transition-colors ${
+                followMode === mode
+                  ? "bg-[#0F5C4C] text-[#F6F1E4]"
+                  : "text-[#5B6B62] dark:text-[#A9BDB2]"
+              }`}
+              title={`سرعة التمرير: ${label}`}
+              aria-label={`سرعة التمرير: ${label}`}
+            >
+              {icon}
+            </button>
+          ))}
+          <span className="text-[9px] text-[#8A7A4E]">سريع</span>
+        </div>
+      )}
+
       {searchOpen && (
         <QuranSearch
           SURAHS={SURAHS}
           toArabicDigits={toArabicDigits}
+          startVoice={voiceSearch}
           onClose={() => setSearchOpen(false)}
           onPick={(sId, aId) => {
             stopAll();

@@ -208,6 +208,9 @@ export const DEFAULT_SETTINGS = {
   recentSurahs: [], // آخر ٥ سور
   streak: { count: 0, lastDay: null },
   notifications: null, // شوف utils/notifications.js
+  salawat: null, // شوف utils/reminders.js
+  followMode: "ayah", // سرعة تمرير المتابعة: ayah | three | page
+  lastLessonDay: null, // لهدف "اقرأ درس"
 };
 
 export async function getSettings() {
