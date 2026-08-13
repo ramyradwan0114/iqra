@@ -17,6 +17,7 @@ import {
   DEFAULT_SETTINGS,
 } from "../utils/db.js";
 import { useSyncProgress } from "./useFirebase.js";
+import { advanceStreak, justReached, dayKey } from "../utils/streak.js";
 
 const EMPTY = { child: [], adult: [] };
 const LEGACY_KEY = "iqra.progress.v1"; // نقل بيانات النسخة القديمة
@@ -116,36 +117,25 @@ export function useSettings() {
 }
 
 // ---------- السلسلة اليومية ----------
-const dayKey = (d = new Date()) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-
-const daysBetween = (a, b) => {
-  const da = new Date(a + "T00:00:00");
-  const db = new Date(b + "T00:00:00");
-  return Math.round((db - da) / 864e5);
-};
-
+// السلسلة بتتقدّم لما يفتح **درس** فعلًا، مش بمجرد فتح التطبيق — عشان
+// الرقم يعني تعلّمًا حقيقي. المنطق في utils/streak.js عشان يتختبر لوحده.
 export function useStreak(settingsLoaded, settings, update) {
-  const done = useRef(false);
-  const streak = settings?.streak || { count: 0, lastDay: null };
+  const streak = settings?.streak || { count: 0, lastDay: null, best: 0 };
+  const [celebrate, setCelebrate] = useState(null);
 
-  useEffect(() => {
-    if (!settingsLoaded || done.current) return;
-    done.current = true;
-    const today = dayKey();
-    const last = streak.lastDay;
-    if (last === today) return; // اتحسبت النهاردة
-    let count;
-    if (!last) count = 1;
-    else {
-      const gap = daysBetween(last, today);
-      count = gap === 1 ? (streak.count || 0) + 1 : 1; // فات يوم = نبدأ من ١
+  const markLessonOpened = useCallback(() => {
+    const next = advanceStreak(streak);
+    if (!next.changed) return;
+    update({ streak: { count: next.count, lastDay: next.lastDay, best: next.best } });
+    const m = justReached(next.count);
+    if (m) {
+      awardBadge(m.id);
+      setCelebrate(m);
+      setTimeout(() => setCelebrate(null), 4000);
     }
-    update({ streak: { count, lastDay: today } });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settingsLoaded]);
+  }, [streak, update]);
 
-  return streak.count || 0;
+  return { streak, markLessonOpened, celebrate };
 }
 
 // ---------- التكرار المتباعد + الشارات ----------

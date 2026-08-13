@@ -1,11 +1,13 @@
 import React from "react";
 import NotificationSettings from "./NotificationSettings.jsx";
+import { DEFAULT_SALAWAT, INTERVAL_OPTIONS } from "../utils/reminders.js";
 
 const QURAN_FONT = "'Amiri Quran', 'Amiri', 'Traditional Arabic', serif";
 
 export default function SettingsPanel({ settings, onChange, toArabicDigits }) {
   const dark = settings?.theme === "dark";
   const fontSize = settings?.fontSize ?? 2;
+  const sal = { ...DEFAULT_SALAWAT, ...(settings?.salawat || {}) };
 
   return (
     <div className="flex flex-col gap-8">
@@ -60,6 +62,56 @@ export default function SettingsPanel({ settings, onChange, toArabicDigits }) {
             بِسْمِ ٱللَّهِ
           </p>
         </div>
+      </section>
+
+      <div className="border-t border-[#E4DCC3] dark:border-[#3A5148]" />
+
+      {/* الصلاة على النبي ﷺ */}
+      <section className="flex flex-col gap-4">
+        <h3 className="font-bold text-[#0F5C4C] dark:text-[#E7C873]">الصلاة على النبي ﷺ</h3>
+
+        <label className="flex items-center justify-between bg-[#FBF8EF] dark:bg-[#243830] border border-[#E4DCC3] dark:border-[#3A5148] rounded-2xl px-4 py-3">
+          <span>
+            <span className="font-semibold text-sm block">تذكير دوري</span>
+            <span className="text-[11px] text-[#5B6B62] dark:text-[#A9BDB2]">
+              «صلِّ على النبي ﷺ» على فترات
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            checked={!!sal.enabled}
+            onChange={() => onChange({ salawat: { ...sal, enabled: !sal.enabled } })}
+            className="w-5 h-5 accent-[#0F5C4C]"
+          />
+        </label>
+
+        {sal.enabled && (
+          <>
+            <div className="flex flex-wrap items-center gap-2 bg-[#FBF8EF] dark:bg-[#243830] border border-[#E4DCC3] dark:border-[#3A5148] rounded-2xl px-4 py-3">
+              <span className="text-sm font-semibold ml-1">الفترة</span>
+              {INTERVAL_OPTIONS.map((o) => (
+                <button
+                  key={o.hours}
+                  onClick={() => onChange({ salawat: { ...sal, intervalHours: o.hours } })}
+                  className={`px-4 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                    (sal.intervalHours || 1) === o.hours
+                      ? "bg-[#0F5C4C] border-[#0F5C4C] text-[#F6F1E4]"
+                      : "border-[#E4DCC3] dark:border-[#3A5148] text-[#5B6B62] dark:text-[#A9BDB2]"
+                  }`}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+
+            <p className="text-[11px] text-[#6B5A2E] bg-[#FBF3E2] rounded-xl px-4 py-3 leading-relaxed">
+              التذكير بيتوقّف تلقائيًا من <strong>١٠ مساءً لـ ٨ صباحًا</strong> عشان
+              ما يزعجكش بالليل. ولأن المتصفح مابيجدولش إشعارات والتطبيق مقفول،
+              التذكير بيظهر <strong>جوّه التطبيق</strong> لما تفتحه لو الإشعار
+              ماوصلش.
+            </p>
+          </>
+        )}
       </section>
 
       <div className="border-t border-[#E4DCC3] dark:border-[#3A5148]" />

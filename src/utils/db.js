@@ -29,6 +29,9 @@ export const STORES = {
   daily: "daily", // key: day    → { id: day, answered, correct, points }
   leaderboard: "leaderboard", // key: name → { name, points, lastDay, days }
   tafsir: "tafsir", // key: key    → { key: "16:1:1", text, timestamp }
+  groups: "groups", // key: id     → { id, name, level, goal, members[], local }
+  tasbih: "tasbih", // key: id     → { id, day, counts, totals }
+  goals: "goals", // key: id     → { id, day, done, awarded, yesterday }
 };
 
 let dbPromise = null;
@@ -106,6 +109,12 @@ function getDB() {
           db.createObjectStore(STORES.leaderboard, { keyPath: "name" });
         if (!db.objectStoreNames.contains(STORES.tafsir))
           db.createObjectStore(STORES.tafsir, { keyPath: "key" });
+        if (!db.objectStoreNames.contains(STORES.groups))
+          db.createObjectStore(STORES.groups, { keyPath: "id" });
+        if (!db.objectStoreNames.contains(STORES.tasbih))
+          db.createObjectStore(STORES.tasbih, { keyPath: "id" });
+        if (!db.objectStoreNames.contains(STORES.goals))
+          db.createObjectStore(STORES.goals, { keyPath: "id" });
       },
     }).catch(() => {
       idbBroken = true;

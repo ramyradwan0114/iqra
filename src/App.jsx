@@ -8,15 +8,20 @@ import RecitationChecker from "./components/RecitationChecker.jsx";
 import DailyChallenge from "./components/DailyChallenge.jsx";
 import SettingsPanel from "./components/SettingsPanel.jsx";
 import ShareApp from "./components/ShareApp.jsx";
+import StreakBadge from "./components/StreakBadge.jsx";
+import StudyGroup from "./components/StudyGroup.jsx";
+import TasbihCounter from "./components/TasbihCounter.jsx";
+import DailyGoal from "./components/DailyGoal.jsx";
+import {
+  DEFAULT_SALAWAT,
+  SALAWAT_NOTIF,
+  salawatDue,
+  dayKey as tasbihDayKey,
+} from "./utils/reminders.js";
 import QuranSearch from "./components/QuranSearch.jsx";
 import { shareApp } from "./utils/share.js";
-import {
-  makeTimingLoader,
-  loadTranslations,
-  loadTajweed,
-  loadTafsir,
-  TAFSIR_NAME,
-} from "./hooks/useSurahTimings.js";
+import { makeTimingLoader, loadTranslations, loadTajweed } from "./hooks/useSurahTimings.js";
+import TafsirAccordion from "./components/TafsirAccordion.jsx";
 import {
   DEFAULT_NOTIF_SETTINGS,
   NOTIF_KINDS,
@@ -565,6 +570,8 @@ const AyahLine = React.memo(function AyahLine({
   tajweedWordsList,
   onRule,
   activeRef,
+  onTafsir,
+  tafsirOpen,
 }) {
   const { ayah, words, segments } = ayahData;
   const holdRef = useRef(null);
@@ -639,7 +646,23 @@ const AyahLine = React.memo(function AyahLine({
       })}
       <span className="text-[#0F5C4C] dark:text-[#8FD6C0] mx-1 select-none">
         ۝{toArabicDigits(ayah)}
-      </span>{" "}
+      </span>
+      {/* زر تفسير الآية دي وحدها */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onTafsir?.(ayah);
+        }}
+        className={`align-middle mx-1 text-[0.5em] leading-none px-1.5 py-1 rounded-md border transition-colors ${
+          tafsirOpen
+            ? "bg-[#0F5C4C] border-[#0F5C4C] text-[#F6F1E4]"
+            : "border-[#E4DCC3] dark:border-[#3A5148] text-[#5B6B62] dark:text-[#A9BDB2] hover:border-[#0F5C4C]"
+        }`}
+        title={`تفسير الآية ${toArabicDigits(ayah)}`}
+        aria-label={`تفسير الآية ${toArabicDigits(ayah)}`}
+      >
+        📖
+      </button>{" "}
     </span>
   );
 });
@@ -739,7 +762,7 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma }) {
   const [tajweedErr, setTajweedErr] = useState(false);
   const [rulePopup, setRulePopup] = useState(null);
   const [reciteFor, setReciteFor] = useState(null); // { text, ayah }
-  const [tafsirFor, setTafsirFor] = useState(null); // { ayah, text|null, loading }
+  const [openTafsir, setOpenTafsir] = useState(null); // رقم الآية المفتوح تفسيرها
   const [searchOpen, setSearchOpen] = useState(false);
   const [pendingAyah, setPendingAyah] = useState(null); // نروح لها بعد ما السورة تحمّل
   const [popup, setPopup] = useState(null); // { word, t, r, x, y }
@@ -1128,19 +1151,9 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma }) {
         >
           سجّل صوتك 🎤
         </button>
-        <button
-          onClick={async () => {
-            const key = activeWord ? Number(activeWord.split(":")[0]) : data?.ayat?.[0]?.ayah;
-            if (!key) return;
-            setTafsirFor({ ayah: key, loading: true, text: null });
-            const t = await loadTafsir(surah, key);
-            setTafsirFor({ ayah: key, loading: false, text: t });
-          }}
-          disabled={!data}
-          className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-[#E4DCC3] dark:border-[#3A5148] text-[#5B6B62] dark:text-[#A9BDB2] disabled:opacity-40"
-        >
-          التفسير 📘
-        </button>
+        <span className="text-[11px] text-[#8A7A4E]">
+          📖 جنب كل آية = تفسيرها
+        </span>
       </div>
 
       {/* حجم الخط اتنقل لـ المزيد ← الإعدادات (مصدر تحكّم واحد) */}
@@ -1198,7 +1211,7 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma }) {
       {!data && !error ? (
         <p className="text-sm text-[#5B6B62] py-12 text-center">جاري تحميل التوقيت…</p>
       ) : data ? (
-        <p
+        <div
           dir="rtl"
           className="text-[#1E2A24] dark:text-[#F6F1E4] text-justify select-none"
           style={{
@@ -1208,21 +1221,32 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma }) {
           }}
         >
           {data.ayat.map((a) => (
-            <AyahLine
-              key={`${a.ayah}-${reciterId}`}
-              ayahData={a}
-              activeWord={
-                activeWord && activeWord.startsWith(`${a.ayah}:`) ? activeWord : null
-              }
-              selection={selection}
-              onWordTap={handleWordTap}
-              onWordHold={handleWordHold}
-              tajweedWordsList={tajweedByAyah?.[a.ayah]}
-              onRule={(r) => setRulePopup(r)}
-              activeRef={activeElRef}
-            />
+            <React.Fragment key={`${a.ayah}-${reciterId}`}>
+              <AyahLine
+                ayahData={a}
+                activeWord={
+                  activeWord && activeWord.startsWith(`${a.ayah}:`) ? activeWord : null
+                }
+                selection={selection}
+                onWordTap={handleWordTap}
+                onWordHold={handleWordHold}
+                tajweedWordsList={tajweedByAyah?.[a.ayah]}
+                onRule={(r) => setRulePopup(r)}
+                activeRef={activeElRef}
+                onTafsir={(n) => setOpenTafsir((cur) => (cur === n ? null : n))}
+                tafsirOpen={openTafsir === a.ayah}
+              />
+              {openTafsir === a.ayah && (
+                <TafsirAccordion
+                  surah={surah}
+                  ayah={a.ayah}
+                  toArabicDigits={toArabicDigits}
+                  onClose={() => setOpenTafsir(null)}
+                />
+              )}
+            </React.Fragment>
           ))}
-        </p>
+        </div>
       ) : null}
       <div className="mt-8 flex items-start gap-3 text-sm text-[#5B6B62] border-t border-[#E4DCC3] pt-5">
         <span className="text-[#0F5C4C] font-bold">↳</span>
@@ -1284,54 +1308,6 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma }) {
             >
               فهمت
             </button>
-          </div>
-        </div>
-      )}
-
-      {tafsirFor && (
-        <div
-          className="fixed inset-0 bg-[#1E2A24]/50 z-[60] flex items-end sm:items-center justify-center p-3"
-          onClick={() => setTafsirFor(null)}
-        >
-          <div
-            className="bg-[#FFFDF6] dark:bg-[#243830] rounded-3xl border border-[#E4DCC3] dark:border-[#3A5148] w-full max-w-lg p-6 max-h-full overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-bold text-[#0F5C4C] dark:text-[#E7C873]">
-                {TAFSIR_NAME} — آية {toArabicDigits(tafsirFor.ayah)}
-              </h3>
-              <button onClick={() => setTafsirFor(null)} className="text-[#5B6B62] text-sm font-semibold">
-                ✕
-              </button>
-            </div>
-
-            <p
-              dir="rtl"
-              className="text-xl leading-loose text-center mb-4 text-[#1E2A24] dark:text-[#F6F1E4]"
-              style={{ fontFamily: QURAN_FONT }}
-            >
-              {data?.ayat.find((a) => a.ayah === tafsirFor.ayah)?.words.join(" ")}
-            </p>
-
-            {tafsirFor.loading ? (
-              <p className="text-sm text-[#5B6B62] text-center py-6">جاري تحميل التفسير…</p>
-            ) : tafsirFor.text ? (
-              <>
-                <p className="text-[15px] leading-loose text-[#1E2A24] dark:text-[#F6F1E4] bg-[#FBF8EF] dark:bg-[#1E2A24] rounded-2xl px-5 py-4">
-                  {tafsirFor.text}
-                </p>
-                <p className="text-[11px] text-[#8A7A4E] mt-3">
-                  المصدر: {TAFSIR_NAME} (مجمع الملك فهد) عبر Quran.com — نص
-                  مبسّط عن قصد. مش تفسير الجلالين: الـ API مافيهوش الجلالين،
-                  والميسر أوضح للمبتدئين.
-                </p>
-              </>
-            ) : (
-              <p className="text-sm text-[#8A4E4E] bg-[#FBEDED] rounded-xl px-4 py-3">
-                تعذّر تحميل التفسير — محتاج اتصال أول مرة، وبعدها بيتخزّن للأوفلاين.
-              </p>
-            )}
           </div>
         </div>
       )}
@@ -2129,9 +2105,49 @@ export default function App() {
   const { progress, complete, reset } = useProgress();
   const { name, setName, loaded: nameLoaded } = useStudent();
   const { settings, update: updateSettings, pushRecentSurah, loaded: settingsLoaded } = useSettings();
-  const streak = useStreak(settingsLoaded, settings, updateSettings);
+  const { streak, markLessonOpened, celebrate } = useStreak(
+    settingsLoaded,
+    settings,
+    updateSettings
+  );
   const learning = useLearning();
   const khatma = useKhatma();
+  const [tasbih, setTasbih] = useState(null);
+  const lessonDoneToday = settings?.lastLessonDay === tasbihDayKey();
+
+  // ---------- تذكير الصلاة على النبي ﷺ ----------
+  // بيشتغل جنب محرّك التذكيرات العام. لو الإشعارات مش مسموحة أو المتصفح
+  // مش داعم، بنعرض تنبيهًا جوّه التطبيق بدل ما نسكت.
+  const salawat = { ...DEFAULT_SALAWAT, ...(settings?.salawat || {}) };
+  const salawatRef = useRef(salawat);
+  salawatRef.current = salawat;
+
+  useEffect(() => {
+    if (!settingsLoaded || !salawat.enabled) return;
+    let stopped = false;
+
+    const tick = async () => {
+      if (stopped) return;
+      const live = salawatRef.current;
+      if (!salawatDue(live)) return;
+      const shown = await showNotification(SALAWAT_NOTIF.title, {
+        body: SALAWAT_NOTIF.body,
+        tag: "iqra-salawat",
+      });
+      if (!shown) showToast("ﷺ " + SALAWAT_NOTIF.body); // بديل جوّه التطبيق
+      const next = { ...live, lastShown: Date.now() };
+      salawatRef.current = next;
+      updateSettings({ salawat: next });
+    };
+
+    tick();
+    const iv = setInterval(tick, 60000);
+    return () => {
+      stopped = true;
+      clearInterval(iv);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settingsLoaded, salawat.enabled, salawat.intervalHours]);
 
   // ---------- محرّك التذكيرات ----------
   // بيفحص عند الفتح وكل دقيقة والتطبيق شغّال. مش بديل عن Web Push:
@@ -2208,6 +2224,20 @@ export default function App() {
   const [subMore, setSubMore] = useState("tajweed");
   const [toast, setToast] = useState(null);
 
+  // معرّف ثابت للجهاز — بيميّز العضو داخل المجموعة
+  const [deviceId] = useState(() => {
+    try {
+      let v = localStorage.getItem("iqra.deviceId");
+      if (!v) {
+        v = `u_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+        localStorage.setItem("iqra.deviceId", v);
+      }
+      return v;
+    } catch {
+      return `u_${Math.random().toString(36).slice(2, 9)}`;
+    }
+  });
+
   const showToast = useCallback((msg) => {
     setToast(msg);
     setTimeout(() => setToast(null), 2200);
@@ -2254,12 +2284,7 @@ export default function App() {
           <div>
             <h1 className="text-2xl font-bold text-[#0F5C4C] dark:text-[#E7C873] flex items-center gap-2">
               اقرأ
-              {streak > 0 && (
-                <span className="text-sm font-semibold text-[#8A7A4E] dark:text-[#E7C873]">
-                  🔥 {toArabicDigits(streak)}{" "}
-                  {streak === 1 ? "يوم" : streak === 2 ? "يومين" : "أيام"}
-                </span>
-              )}
+              <StreakBadge streak={streak} toArabicDigits={toArabicDigits} />
             </h1>
             {name ? (
               <span className="flex items-center gap-2 mt-0.5">
@@ -2346,6 +2371,7 @@ export default function App() {
               : [
                   ["tajweed", "التجويد", "◌ّ"],
                   ["daily", "المسابقة", "🏅"],
+                  ["groups", "مجموعاتي", "👥"],
                   ["teacher", "المعلّم", "🔐"],
                   ["share", "شارك التطبيق", "📤"],
                   ["settings", "الإعدادات", "⚙️"],
@@ -2369,6 +2395,29 @@ export default function App() {
               );
             })}
           </div>
+        )}
+
+        {/* هدف اليوم + عدّاد التسبيح — تحت الهيدر في الشاشة الرئيسية */}
+        {tab === "learn" && (
+          <>
+            <DailyGoal
+              tasbih={tasbih}
+              lessonDoneToday={lessonDoneToday}
+              toArabicDigits={toArabicDigits}
+              onToast={showToast}
+              onGoLesson={() => {
+                if (!currentLocked) {
+                  markLessonOpened();
+                  setLessonOpen(true);
+                }
+              }}
+            />
+            <TasbihCounter
+              toArabicDigits={toArabicDigits}
+              onChange={setTasbih}
+              onToast={showToast}
+            />
+          </>
         )}
 
         {tab === "learn" && (
@@ -2421,7 +2470,10 @@ export default function App() {
                 </div>
               </div>
               <button
-                onClick={() => setLessonOpen(true)}
+                onClick={() => {
+                  markLessonOpened(); // فتح الدرس = يوم تعلّم
+                  setLessonOpen(true);
+                }}
                 disabled={currentLocked}
                 className={`px-5 py-2.5 rounded-xl font-bold text-sm ${
                   currentLocked
@@ -2480,12 +2532,37 @@ export default function App() {
           />
         )}
 
+        {tab === "more" && subMore === "groups" && (
+          <StudyGroup
+            student={{
+              id: deviceId,
+              name,
+              level: Math.max(...(progress[audience] || [0]), 0) + 1,
+              streak,
+            }}
+            toArabicDigits={toArabicDigits}
+            onToast={showToast}
+          />
+        )}
+
         {tab === "more" && subMore === "share" && <ShareApp onToast={showToast} />}
 
         {tab === "more" && subMore === "teacher" && (
           <TeacherMode toArabicDigits={toArabicDigits} />
         )}
       </main>
+
+      {celebrate && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-6 pointer-events-none">
+          <div className="bg-[#0F5C4C] text-[#F6F1E4] rounded-3xl px-8 py-6 shadow-2xl text-center">
+            <div className="text-6xl mb-2">{celebrate.icon}</div>
+            <div className="font-bold text-lg">{celebrate.label}!</div>
+            <div className="text-sm opacity-80 mt-1">
+              {toArabicDigits(celebrate.days)} يوم تعلّم متتالي 🔥
+            </div>
+          </div>
+        </div>
+      )}
 
       {toast && (
         <div className="fixed bottom-24 inset-x-0 flex justify-center z-[75] px-4 pointer-events-none">
@@ -2515,6 +2592,9 @@ export default function App() {
           onComplete={(a, l) => {
             buzz([30, 50, 30]);
             complete(a, l);
+            // ذِكْر بعد الدرس + تعليم هدف "اقرأ درس" كمكتمل
+            updateSettings({ lastLessonDay: tasbihDayKey() });
+            showToast("اللهم بارك لي فيما تعلّمت 🤲");
           }}
           onClose={() => setLessonOpen(false)}
         />
