@@ -95,7 +95,7 @@ export default function QuranSearch({ SURAHS, toArabicDigits, onPick, onClose, s
       onClick={onClose}
     >
       <div
-        className="bg-[#FFFDF6] dark:bg-[#243830] rounded-3xl border border-[#E4DCC3] dark:border-[#3A5148] w-full max-w-xl max-h-full flex flex-col overflow-hidden"
+        className="bg-[#FFFFFF] dark:bg-[#243830] rounded-3xl border border-[#E4DCC3] dark:border-[#3A5148] w-full max-w-xl max-h-full flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* خانة البحث أصغر، وزر الصوت جنبها من فوق وكبير على الموبايل */}
@@ -113,11 +113,11 @@ export default function QuranSearch({ SURAHS, toArabicDigits, onPick, onClose, s
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="ابحث…"
-                className="flex-1 min-w-0 bg-[#FBF8EF] dark:bg-[#1E2A24] border border-[#E4DCC3] dark:border-[#3A5148] rounded-xl px-3 py-2 text-sm outline-none focus:border-[#0F5C4C]"
+                className="flex-1 min-w-0 bg-[#FBF8EF] dark:bg-[#1E2A24] border border-[#E4DCC3] dark:border-[#3A5148] rounded-xl px-3 py-2 text-sm outline-none focus:border-[#1B4D3E]"
               />
               <button
                 type="submit"
-                className="shrink-0 w-11 h-11 grid place-items-center rounded-xl bg-[#0F5C4C] text-[#F6F1E4] text-lg"
+                className="shrink-0 w-11 h-11 grid place-items-center rounded-xl bg-[#1B4D3E] text-[#F5F0E8] text-lg"
                 aria-label="بحث"
                 title="بحث"
               >
@@ -131,8 +131,8 @@ export default function QuranSearch({ SURAHS, toArabicDigits, onPick, onClose, s
                 onClick={startVoice}
                 className={`shrink-0 w-14 h-14 grid place-items-center rounded-2xl border-2 text-2xl transition-colors ${
                   listening
-                    ? "bg-[#8A4E4E] border-[#8A4E4E] text-[#F6F1E4] animate-pulse"
-                    : "bg-[#E7C873] border-[#E7C873] text-[#1E2A24]"
+                    ? "bg-[#8A4E4E] border-[#8A4E4E] text-[#F5F0E8] animate-pulse"
+                    : "bg-[#D4A853] border-[#D4A853] text-[#1E2A24]"
                 }`}
                 title="بحث صوتي"
                 aria-label="بحث صوتي"
@@ -153,7 +153,7 @@ export default function QuranSearch({ SURAHS, toArabicDigits, onPick, onClose, s
 
         <div className="overflow-y-auto">
           {listening && (
-            <p className="text-sm text-[#0F5C4C] dark:text-[#8FD6C0] text-center py-6">
+            <p className="text-sm text-[#1B4D3E] dark:text-[#8FD6C0] text-center py-6">
               بتكلّم… قول الآية أو الكلمة
             </p>
           )}
@@ -175,11 +175,11 @@ export default function QuranSearch({ SURAHS, toArabicDigits, onPick, onClose, s
                   <button
                     key={v.verse_key}
                     onClick={() => onPick(sId, aId)}
-                    className="w-full text-right px-5 py-3.5 border-b border-[#F1EAD6] dark:border-[#3A5148] hover:bg-[#F6F1E4] dark:hover:bg-[#1E2A24] transition-colors"
+                    className="w-full text-right px-5 py-3.5 border-b border-[#F1EAD6] dark:border-[#3A5148] hover:bg-[#F5F0E8] dark:hover:bg-[#1E2A24] transition-colors"
                   >
                     <div
                       dir="rtl"
-                      className="text-lg leading-loose text-[#1E2A24] dark:text-[#F6F1E4] mb-1"
+                      className="text-lg leading-loose text-[#1E2A24] dark:text-[#F5F0E8] mb-1"
                       style={{ fontFamily: QURAN_FONT }}
                     >
                       {v.words
@@ -187,7 +187,7 @@ export default function QuranSearch({ SURAHS, toArabicDigits, onPick, onClose, s
                         .map((w, i) => (
                           <span
                             key={i}
-                            className={w.highlight ? "bg-[#E7C873] text-[#1E2A24] rounded px-0.5" : ""}
+                            className={w.highlight ? "bg-[#D4A853] text-[#1E2A24] rounded px-0.5" : ""}
                           >
                             {w.text}{" "}
                           </span>

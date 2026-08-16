@@ -79,13 +79,13 @@ export default function ConfidenceMode({ toArabicDigits }) {
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-[#0F5C4C] dark:text-[#E7C873]">اقرأ بثقة</h2>
+          <h2 className="text-xl font-bold text-[#1B4D3E] dark:text-[#D4A853]">اقرأ بثقة</h2>
           <p className="text-xs text-[#5B6B62] dark:text-[#A9BDB2] mt-1">
             اقرأ وسجّل — من غير أي تقييم ولا درجات. الهدف إنك تسمع نفسك وتتعوّد.
           </p>
         </div>
         {streak > 0 && (
-          <span className="text-sm font-bold text-[#8A7A4E] dark:text-[#E7C873] whitespace-nowrap">
+          <span className="text-sm font-bold text-[#8A7A4E] dark:text-[#D4A853] whitespace-nowrap">
             🔥 {toArabicDigits(streak)} {streak === 1 ? "يوم" : streak === 2 ? "يومين" : "أيام"} قراءة
           </span>
         )}
@@ -99,7 +99,7 @@ export default function ConfidenceMode({ toArabicDigits }) {
             onClick={() => setChallenge(c.level)}
             className={`text-right rounded-2xl border p-3 transition-colors ${
               challenge === c.level
-                ? "bg-[#0F5C4C] border-[#0F5C4C] text-[#F6F1E4]"
+                ? "bg-[#1B4D3E] border-[#1B4D3E] text-[#F5F0E8]"
                 : "bg-[#FBF8EF] dark:bg-[#243830] border-[#E4DCC3] dark:border-[#3A5148]"
             }`}
           >
@@ -107,7 +107,7 @@ export default function ConfidenceMode({ toArabicDigits }) {
             <div className="text-xs font-bold">{c.title}</div>
             <div
               className={`text-[10px] mt-0.5 ${
-                challenge === c.level ? "text-[#F6F1E4]/75" : "text-[#5B6B62] dark:text-[#A9BDB2]"
+                challenge === c.level ? "text-[#F5F0E8]/75" : "text-[#5B6B62] dark:text-[#A9BDB2]"
               }`}
             >
               {c.desc}
@@ -116,7 +116,7 @@ export default function ConfidenceMode({ toArabicDigits }) {
         ))}
       </div>
 
-      <div className="bg-[#FFFDF6] dark:bg-[#243830] border border-[#E4DCC3] dark:border-[#3A5148] rounded-3xl p-6">
+      <div className="bg-[#FFFFFF] dark:bg-[#243830] border border-[#E4DCC3] dark:border-[#3A5148] rounded-3xl p-6">
         {phase === "ready" && (
           <>
             <div className="flex flex-wrap gap-2 mb-5 justify-center">
@@ -126,7 +126,7 @@ export default function ConfidenceMode({ toArabicDigits }) {
                   onClick={() => setSurah(id)}
                   className={`px-3 py-1.5 rounded-lg text-sm border ${
                     surah === id
-                      ? "bg-[#E7C873] border-[#E7C873] text-[#1E2A24]"
+                      ? "bg-[#D4A853] border-[#D4A853] text-[#1E2A24]"
                       : "border-[#E4DCC3] dark:border-[#3A5148] text-[#5B6B62] dark:text-[#A9BDB2]"
                   }`}
                   style={{ fontFamily: QURAN_FONT }}
@@ -137,7 +137,7 @@ export default function ConfidenceMode({ toArabicDigits }) {
             </div>
             <p
               dir="rtl"
-              className="text-xl leading-loose text-center mb-6 text-[#1E2A24] dark:text-[#F6F1E4]"
+              className="text-xl leading-loose text-center mb-6 text-[#1E2A24] dark:text-[#F5F0E8]"
               style={{ fontFamily: QURAN_FONT }}
             >
               {s.ayat.join(" ۝ ")}
@@ -145,7 +145,7 @@ export default function ConfidenceMode({ toArabicDigits }) {
             <div className="text-center">
               <button
                 onClick={start}
-                className="bg-[#0F5C4C] text-[#F6F1E4] px-8 py-3 rounded-xl font-bold"
+                className="bg-[#1B4D3E] text-[#F5F0E8] px-8 py-3 rounded-xl font-bold"
               >
                 ابدأ القراءة
               </button>
@@ -157,14 +157,14 @@ export default function ConfidenceMode({ toArabicDigits }) {
           <div className="flex flex-col items-center gap-6">
             <p
               dir="rtl"
-              className="text-2xl leading-loose text-center text-[#1E2A24] dark:text-[#F6F1E4]"
+              className="text-2xl leading-loose text-center text-[#1E2A24] dark:text-[#F5F0E8]"
               style={{ fontFamily: QURAN_FONT }}
             >
               {s.ayat.join(" ۝ ")}
             </p>
             <div className="flex items-center gap-3">
               <span className="w-3 h-3 rounded-full bg-[#8A4E4E] animate-pulse" />
-              <span className="text-2xl font-bold text-[#0F5C4C] dark:text-[#8FD6C0]">
+              <span className="text-2xl font-bold text-[#1B4D3E] dark:text-[#8FD6C0]">
                 {String(Math.floor(seconds / 60)).padStart(2, "0")}:
                 {String(seconds % 60).padStart(2, "0")}
               </span>
@@ -176,7 +176,7 @@ export default function ConfidenceMode({ toArabicDigits }) {
             )}
             <button
               onClick={finish}
-              className="bg-[#8A4E4E] text-[#F6F1E4] px-8 py-3 rounded-xl font-bold"
+              className="bg-[#8A4E4E] text-[#F5F0E8] px-8 py-3 rounded-xl font-bold"
             >
               خلّصت
             </button>
@@ -187,13 +187,13 @@ export default function ConfidenceMode({ toArabicDigits }) {
           <div className="flex flex-col items-center gap-5">
             <div className="text-4xl">🎧</div>
             {url && <audio src={url} controls className="w-full max-w-sm" />}
-            <p className="font-bold text-[#0F5C4C] dark:text-[#E7C873]">حاسس بتحسّن؟</p>
+            <p className="font-bold text-[#1B4D3E] dark:text-[#D4A853]">حاسس بتحسّن؟</p>
             <div className="flex flex-wrap gap-2 justify-center">
               {FEELINGS.map((f) => (
                 <button
                   key={f.id}
                   onClick={() => answer(f.id)}
-                  className="px-5 py-3 rounded-xl border border-[#E4DCC3] dark:border-[#3A5148] hover:border-[#0F5C4C] text-sm"
+                  className="px-5 py-3 rounded-xl border border-[#E4DCC3] dark:border-[#3A5148] hover:border-[#1B4D3E] text-sm"
                 >
                   <span className="text-xl ml-1">{f.icon}</span> {f.label}
                 </button>
@@ -205,7 +205,7 @@ export default function ConfidenceMode({ toArabicDigits }) {
 
       {entries.length > 0 && (
         <div>
-          <h3 className="text-sm font-bold text-[#0F5C4C] dark:text-[#E7C873] mb-2">
+          <h3 className="text-sm font-bold text-[#1B4D3E] dark:text-[#D4A853] mb-2">
             يوميات القراءة {todayCount > 0 && `(${toArabicDigits(todayCount)} النهاردة)`}
           </h3>
           <div className="flex flex-col gap-1.5 max-h-56 overflow-y-auto">

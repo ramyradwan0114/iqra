@@ -13,7 +13,7 @@ export default function SettingsPanel({ settings, onChange, toArabicDigits }) {
     <div className="flex flex-col gap-8">
       {/* المظهر */}
       <section className="flex flex-col gap-4">
-        <h3 className="font-bold text-[#0F5C4C] dark:text-[#E7C873]">المظهر</h3>
+        <h3 className="font-bold text-[#1B4D3E] dark:text-[#D4A853]">المظهر</h3>
 
         <label className="flex items-center justify-between bg-[#FBF8EF] dark:bg-[#243830] border border-[#E4DCC3] dark:border-[#3A5148] rounded-2xl px-4 py-3">
           <span>
@@ -25,7 +25,7 @@ export default function SettingsPanel({ settings, onChange, toArabicDigits }) {
           <button
             onClick={() => onChange({ theme: dark ? "light" : "dark" })}
             className={`w-14 h-8 rounded-full p-1 transition-colors ${
-              dark ? "bg-[#0F5C4C]" : "bg-[#E4DCC3]"
+              dark ? "bg-[#1B4D3E]" : "bg-[#E4DCC3]"
             }`}
             aria-label="تبديل الوضع الليلي"
           >
@@ -51,12 +51,12 @@ export default function SettingsPanel({ settings, onChange, toArabicDigits }) {
             step="0.1"
             value={fontSize}
             onChange={(e) => onChange({ fontSize: Number(e.target.value) })}
-            className="w-full accent-[#0F5C4C]"
+            className="w-full accent-[#1B4D3E]"
             aria-label="حجم خط المصحف"
           />
           <p
             dir="rtl"
-            className="mt-3 text-center text-[#1E2A24] dark:text-[#F6F1E4] overflow-hidden"
+            className="mt-3 text-center text-[#1E2A24] dark:text-[#F5F0E8] overflow-hidden"
             style={{ fontFamily: QURAN_FONT, fontSize: `${fontSize}rem`, lineHeight: 1.7 }}
           >
             بِسْمِ ٱللَّهِ
@@ -68,7 +68,7 @@ export default function SettingsPanel({ settings, onChange, toArabicDigits }) {
 
       {/* الصلاة على النبي ﷺ */}
       <section className="flex flex-col gap-4">
-        <h3 className="font-bold text-[#0F5C4C] dark:text-[#E7C873]">الصلاة على النبي ﷺ</h3>
+        <h3 className="font-bold text-[#1B4D3E] dark:text-[#D4A853]">الصلاة على النبي ﷺ</h3>
 
         <label className="flex items-center justify-between bg-[#FBF8EF] dark:bg-[#243830] border border-[#E4DCC3] dark:border-[#3A5148] rounded-2xl px-4 py-3">
           <span>
@@ -81,7 +81,7 @@ export default function SettingsPanel({ settings, onChange, toArabicDigits }) {
             type="checkbox"
             checked={!!sal.enabled}
             onChange={() => onChange({ salawat: { ...sal, enabled: !sal.enabled } })}
-            className="w-5 h-5 accent-[#0F5C4C]"
+            className="w-5 h-5 accent-[#1B4D3E]"
           />
         </label>
 
@@ -95,7 +95,7 @@ export default function SettingsPanel({ settings, onChange, toArabicDigits }) {
                   onClick={() => onChange({ salawat: { ...sal, intervalHours: o.hours } })}
                   className={`px-4 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
                     (sal.intervalHours || 1) === o.hours
-                      ? "bg-[#0F5C4C] border-[#0F5C4C] text-[#F6F1E4]"
+                      ? "bg-[#1B4D3E] border-[#1B4D3E] text-[#F5F0E8]"
                       : "border-[#E4DCC3] dark:border-[#3A5148] text-[#5B6B62] dark:text-[#A9BDB2]"
                   }`}
                 >

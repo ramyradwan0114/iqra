@@ -22,7 +22,7 @@ export default function StreakBadge({ streak, toArabicDigits }) {
       <button
         onClick={() => setOpen(true)}
         className={`text-sm font-bold whitespace-nowrap transition-colors ${
-          v.atRisk ? "text-[#8A4E4E]" : "text-[#8A7A4E] dark:text-[#E7C873]"
+          v.atRisk ? "text-[#8A4E4E]" : "text-[#8A7A4E] dark:text-[#D4A853]"
         }`}
         title={v.atRisk ? "سلسلتك في خطر — اقرأ النهاردة" : "سلسلة أيام التعلّم"}
       >
@@ -39,12 +39,12 @@ export default function StreakBadge({ streak, toArabicDigits }) {
           onClick={() => setOpen(false)}
         >
           <div
-            className="bg-[#FFFDF6] dark:bg-[#243830] rounded-3xl border border-[#E4DCC3] dark:border-[#3A5148] max-w-sm w-full p-7 text-center"
+            className="bg-[#FFFFFF] dark:bg-[#243830] rounded-3xl border border-[#E4DCC3] dark:border-[#3A5148] max-w-sm w-full p-7 text-center"
             onClick={(e) => e.stopPropagation()}
             dir="rtl"
           >
             <div className="text-5xl mb-2">🔥</div>
-            <div className="text-3xl font-bold text-[#0F5C4C] dark:text-[#E7C873]">
+            <div className="text-3xl font-bold text-[#1B4D3E] dark:text-[#D4A853]">
               {toArabicDigits(v.count)} {dayWord(v.count)}
             </div>
             {streak?.best > v.count && (
@@ -68,8 +68,8 @@ export default function StreakBadge({ streak, toArabicDigits }) {
                     className={`flex items-center justify-between rounded-2xl px-4 py-3 border ${
                       got
                         ? m.gold
-                          ? "bg-[#FBF3E2] border-[#E7C873]"
-                          : "bg-[#0F5C4C]/10 border-[#0F5C4C]/30"
+                          ? "bg-[#FBF3E2] border-[#D4A853]"
+                          : "bg-[#1B4D3E]/10 border-[#1B4D3E]/30"
                         : "bg-[#FBF8EF] dark:bg-[#1E2A24] border-[#E4DCC3] dark:border-[#3A5148] opacity-60"
                     }`}
                   >
@@ -94,7 +94,7 @@ export default function StreakBadge({ streak, toArabicDigits }) {
 
             <button
               onClick={() => setOpen(false)}
-              className="mt-5 bg-[#0F5C4C] text-[#F6F1E4] px-7 py-2.5 rounded-xl font-bold text-sm"
+              className="mt-5 bg-[#1B4D3E] text-[#F5F0E8] px-7 py-2.5 rounded-xl font-bold text-sm"
             >
               تمام
             </button>

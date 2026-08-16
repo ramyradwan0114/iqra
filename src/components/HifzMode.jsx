@@ -22,12 +22,12 @@ function HifzTest({ item, onDone, onCancel }) {
   const ayat = (s?.ayat || []).slice(item.from - 1, item.to);
 
   return (
-    <div className="bg-[#FFFDF6] dark:bg-[#243830] border border-[#E4DCC3] dark:border-[#3A5148] rounded-3xl p-6 flex flex-col gap-5">
+    <div className="bg-[#FFFFFF] dark:bg-[#243830] border border-[#E4DCC3] dark:border-[#3A5148] rounded-3xl p-6 flex flex-col gap-5">
       <div className="text-center">
         <div className="text-xs text-[#8A7A4E] mb-1">
           {s?.name} — من آية {item.from} لـ {item.to}
         </div>
-        <div className="font-bold text-[#0F5C4C] dark:text-[#E7C873]">
+        <div className="font-bold text-[#1B4D3E] dark:text-[#D4A853]">
           {revealed ? "قارن مع النص" : "اقرأ من حفظك"}
         </div>
       </div>
@@ -38,7 +38,7 @@ function HifzTest({ item, onDone, onCancel }) {
         style={{ fontFamily: QURAN_FONT }}
       >
         {revealed ? (
-          <span className="text-[#1E2A24] dark:text-[#F6F1E4]">{ayat.join(" ۝ ")}</span>
+          <span className="text-[#1E2A24] dark:text-[#F5F0E8]">{ayat.join(" ۝ ")}</span>
         ) : (
           <span className="text-[#E4DCC3] dark:text-[#3A5148] select-none blur-sm">
             {ayat.join(" ۝ ")}
@@ -49,7 +49,7 @@ function HifzTest({ item, onDone, onCancel }) {
       {!revealed ? (
         <button
           onClick={() => setRevealed(true)}
-          className="bg-[#0F5C4C] text-[#F6F1E4] px-6 py-3 rounded-xl font-bold mx-auto"
+          className="bg-[#1B4D3E] text-[#F5F0E8] px-6 py-3 rounded-xl font-bold mx-auto"
         >
           اكشف النص
         </button>
@@ -57,7 +57,7 @@ function HifzTest({ item, onDone, onCancel }) {
         <div className="flex flex-wrap justify-center gap-2">
           <button
             onClick={() => onDone(true)}
-            className="bg-[#0F5C4C] text-[#F6F1E4] px-6 py-3 rounded-xl font-bold text-sm"
+            className="bg-[#1B4D3E] text-[#F5F0E8] px-6 py-3 rounded-xl font-bold text-sm"
           >
             ✓ قريتها صح
           </button>
@@ -89,7 +89,7 @@ export default function HifzMode({ toArabicDigits }) {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h2 className="text-xl font-bold text-[#0F5C4C] dark:text-[#E7C873]">وضع المحفّظ</h2>
+        <h2 className="text-xl font-bold text-[#1B4D3E] dark:text-[#D4A853]">وضع المحفّظ</h2>
         <p className="text-xs text-[#5B6B62] dark:text-[#A9BDB2] mt-1">
           سجّل اللي حفظته، والتطبيق هيفكّرك تراجعه: يوم ← ٣ ← ٧ ← ١٤ ← ٣٠
         </p>
@@ -107,7 +107,7 @@ export default function HifzMode({ toArabicDigits }) {
       ) : (
         <>
           <div className="bg-[#FBF8EF] dark:bg-[#243830] border border-[#E4DCC3] dark:border-[#3A5148] rounded-2xl p-5 flex flex-col gap-3">
-            <div className="text-sm font-bold text-[#0F5C4C] dark:text-[#E7C873]">
+            <div className="text-sm font-bold text-[#1B4D3E] dark:text-[#D4A853]">
               سجّل حفظ جديد
             </div>
             <div className="flex flex-wrap gap-2">
@@ -121,7 +121,7 @@ export default function HifzMode({ toArabicDigits }) {
                   }}
                   className={`px-3 py-1.5 rounded-lg text-sm border ${
                     surah === id
-                      ? "bg-[#E7C873] border-[#E7C873] text-[#1E2A24]"
+                      ? "bg-[#D4A853] border-[#D4A853] text-[#1E2A24]"
                       : "border-[#E4DCC3] dark:border-[#3A5148] text-[#5B6B62] dark:text-[#A9BDB2]"
                   }`}
                   style={{ fontFamily: QURAN_FONT }}
@@ -140,7 +140,7 @@ export default function HifzMode({ toArabicDigits }) {
                     setFrom(v);
                     if (to < v) setTo(v);
                   }}
-                  className="bg-[#FFFDF6] dark:bg-[#1E2A24] border border-[#E4DCC3] dark:border-[#3A5148] rounded-lg px-3 py-1.5"
+                  className="bg-[#FFFFFF] dark:bg-[#1E2A24] border border-[#E4DCC3] dark:border-[#3A5148] rounded-lg px-3 py-1.5"
                 >
                   {Array.from({ length: max }, (_, i) => i + 1).map((n) => (
                     <option key={n} value={n}>
@@ -154,7 +154,7 @@ export default function HifzMode({ toArabicDigits }) {
                 <select
                   value={to}
                   onChange={(e) => setTo(Number(e.target.value))}
-                  className="bg-[#FFFDF6] dark:bg-[#1E2A24] border border-[#E4DCC3] dark:border-[#3A5148] rounded-lg px-3 py-1.5"
+                  className="bg-[#FFFFFF] dark:bg-[#1E2A24] border border-[#E4DCC3] dark:border-[#3A5148] rounded-lg px-3 py-1.5"
                 >
                   {Array.from({ length: max }, (_, i) => i + 1)
                     .filter((n) => n >= from)
@@ -167,7 +167,7 @@ export default function HifzMode({ toArabicDigits }) {
               </label>
               <button
                 onClick={() => add(surah, from, to)}
-                className="bg-[#0F5C4C] text-[#F6F1E4] px-5 py-2 rounded-xl font-bold text-sm"
+                className="bg-[#1B4D3E] text-[#F5F0E8] px-5 py-2 rounded-xl font-bold text-sm"
               >
                 سجّل الحفظ
               </button>
@@ -175,7 +175,7 @@ export default function HifzMode({ toArabicDigits }) {
           </div>
 
           {due.length > 0 && (
-            <div className="bg-[#FBF3E2] border border-[#E7C873] rounded-2xl px-4 py-3 text-sm text-[#6B5A2E]">
+            <div className="bg-[#FBF3E2] border border-[#D4A853] rounded-2xl px-4 py-3 text-sm text-[#6B5A2E]">
               عندك {toArabicDigits(due.length)} مقطع محتاج مراجعة النهاردة 📌
             </div>
           )}
@@ -193,13 +193,13 @@ export default function HifzMode({ toArabicDigits }) {
                     key={it.id}
                     className={`rounded-2xl border p-4 flex flex-wrap items-center justify-between gap-3 ${
                       isDue
-                        ? "bg-[#FBF3E2] border-[#E7C873]"
-                        : "bg-[#FFFDF6] dark:bg-[#243830] border-[#E4DCC3] dark:border-[#3A5148]"
+                        ? "bg-[#FBF3E2] border-[#D4A853]"
+                        : "bg-[#FFFFFF] dark:bg-[#243830] border-[#E4DCC3] dark:border-[#3A5148]"
                     }`}
                   >
                     <div>
                       <div
-                        className="font-bold text-[#1E2A24] dark:text-[#F6F1E4]"
+                        className="font-bold text-[#1E2A24] dark:text-[#F5F0E8]"
                         style={{ fontFamily: QURAN_FONT }}
                       >
                         {SHORT_SURAHS[it.surah]?.name}
@@ -215,14 +215,14 @@ export default function HifzMode({ toArabicDigits }) {
                           <span
                             key={i}
                             className={`w-2 h-2 rounded-full ${
-                              i <= it.stage ? "bg-[#0F5C4C]" : "bg-[#E4DCC3]"
+                              i <= it.stage ? "bg-[#1B4D3E]" : "bg-[#E4DCC3]"
                             }`}
                           />
                         ))}
                       </div>
                       <button
                         onClick={() => setTesting(it)}
-                        className="text-xs px-3 py-1.5 rounded-lg bg-[#0F5C4C] text-[#F6F1E4] font-semibold"
+                        className="text-xs px-3 py-1.5 rounded-lg bg-[#1B4D3E] text-[#F5F0E8] font-semibold"
                       >
                         اختبرني
                       </button>

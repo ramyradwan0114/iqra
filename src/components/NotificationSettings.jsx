@@ -24,7 +24,7 @@ export default function NotificationSettings({ settings, onChange, toArabicDigit
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h3 className="font-bold text-[#0F5C4C] dark:text-[#E7C873]">التذكيرات</h3>
+        <h3 className="font-bold text-[#1B4D3E] dark:text-[#D4A853]">التذكيرات</h3>
         <p className="text-xs text-[#5B6B62] dark:text-[#A9BDB2] mt-1">
           تذكيرات محلية على الجهاز — من غير سيرفر ومن غير حسابات
         </p>
@@ -35,7 +35,7 @@ export default function NotificationSettings({ settings, onChange, toArabicDigit
           المتصفح ده مابيدعمش الإشعارات.
         </p>
       ) : perm !== "granted" ? (
-        <div className="bg-[#FBF3E2] border border-[#E7C873] rounded-2xl px-4 py-4 flex flex-col gap-3">
+        <div className="bg-[#FBF3E2] border border-[#D4A853] rounded-2xl px-4 py-4 flex flex-col gap-3">
           <p className="text-sm text-[#6B5A2E]">
             {perm === "denied"
               ? "الإشعارات مرفوضة من إعدادات المتصفح — لازم تسمح بيها من إعدادات الموقع."
@@ -44,7 +44,7 @@ export default function NotificationSettings({ settings, onChange, toArabicDigit
           {perm !== "denied" && (
             <button
               onClick={ask}
-              className="bg-[#0F5C4C] text-[#F6F1E4] px-5 py-2.5 rounded-xl font-bold text-sm self-start"
+              className="bg-[#1B4D3E] text-[#F5F0E8] px-5 py-2.5 rounded-xl font-bold text-sm self-start"
             >
               اسمح بالإشعارات
             </button>
@@ -58,7 +58,7 @@ export default function NotificationSettings({ settings, onChange, toArabicDigit
               type="checkbox"
               checked={s.enabled}
               onChange={() => toggle("enabled")}
-              className="w-5 h-5 accent-[#0F5C4C]"
+              className="w-5 h-5 accent-[#1B4D3E]"
             />
           </label>
 
@@ -77,7 +77,7 @@ export default function NotificationSettings({ settings, onChange, toArabicDigit
                     type="checkbox"
                     checked={!!s[k.id]}
                     onChange={() => toggle(k.id)}
-                    className="w-5 h-5 accent-[#0F5C4C]"
+                    className="w-5 h-5 accent-[#1B4D3E]"
                   />
                 </label>
               ))}
@@ -92,7 +92,7 @@ export default function NotificationSettings({ settings, onChange, toArabicDigit
                       const [h, m] = e.target.value.split(":").map(Number);
                       onChange({ ...s, hour: h, minute: m });
                     }}
-                    className="bg-[#FFFDF6] dark:bg-[#1E2A24] border border-[#E4DCC3] dark:border-[#3A5148] rounded-lg px-3 py-1.5 text-sm"
+                    className="bg-[#FFFFFF] dark:bg-[#1E2A24] border border-[#E4DCC3] dark:border-[#3A5148] rounded-lg px-3 py-1.5 text-sm"
                   />
                 </div>
               )}
@@ -101,7 +101,7 @@ export default function NotificationSettings({ settings, onChange, toArabicDigit
                 onClick={() =>
                   showNotification(NOTIF_KINDS.lesson.title, { body: "ده تذكير تجريبي ✅" })
                 }
-                className="text-xs text-[#0F5C4C] dark:text-[#8FD6C0] underline self-start"
+                className="text-xs text-[#1B4D3E] dark:text-[#8FD6C0] underline self-start"
               >
                 جرّب تذكير دلوقتي
               </button>

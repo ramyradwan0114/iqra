@@ -11,6 +11,14 @@ import ShareApp from "./components/ShareApp.jsx";
 import StreakBadge from "./components/StreakBadge.jsx";
 import StudyGroup from "./components/StudyGroup.jsx";
 import TasbihCounter from "./components/TasbihCounter.jsx";
+import PrayerTimes from "./components/PrayerTimes.jsx";
+import QiblaCompass from "./components/QiblaCompass.jsx";
+import IslamicCalendar from "./components/IslamicCalendar.jsx";
+import Muazzin from "./components/Muazzin.jsx";
+import AITajweedCoach from "./components/AITajweedCoach.jsx";
+import BottomNav from "./components/BottomNav.jsx";
+import HomeScreen from "./components/HomeScreen.jsx";
+import OnboardingFlow from "./components/OnboardingFlow.jsx";
 import DailyGoal from "./components/DailyGoal.jsx";
 import {
   DEFAULT_SALAWAT,
@@ -30,6 +38,7 @@ import {
   surahOfTheDay,
 } from "./utils/notifications.js";
 import { dayIndex, dayKey as quizDayKey } from "./utils/dailyQuiz.js";
+import { parseLink, clearLinkParams, onServiceWorkerNavigate } from "./utils/deepLink.js";
 import { useKhatma } from "./hooks/useQuranJournal.js";
 import { TAJWEED_RULES, tajweedWords } from "./utils/tajweedData.js";
 import { SHORT_SURAHS, SHORT_SENTENCES } from "./data/shortSurahs.js";
@@ -45,9 +54,12 @@ import {
 //  الخطوط
 // ------------------------------------------------------------
 const FONT_HREF =
-  "https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Amiri+Quran&display=swap";
+  "https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Tajawal:wght@400;500;700&family=Amiri:wght@400;700&family=Amiri+Quran&display=swap";
+
+// المصحف لازم يفضل Amiri Quran — Cairo مابيرسمش الرسم العثماني صح
+// (همزة الوصل ٱ، الألف الخنجرية ـٰ، علامات الوقف).
 const QURAN_FONT = "'Amiri Quran', 'Amiri', 'Traditional Arabic', serif";
-const UI_FONT = "'Amiri', 'Traditional Arabic', serif";
+const UI_FONT = "'Cairo', 'Tajawal', 'Segoe UI', sans-serif";
 function useQuranFonts() {
   const [ready, setReady] = useState(false);
   useEffect(() => {
@@ -169,13 +181,13 @@ function NameDialog({ initial = "", onSave, onClose }) {
     >
       <form
         onSubmit={submit}
-        className="bg-[#FFFDF6] rounded-3xl border border-[#E4DCC3] w-full max-w-sm p-7 flex flex-col gap-5"
+        className="bg-[#FFFFFF] rounded-3xl border border-[#E4DCC3] w-full max-w-sm p-7 flex flex-col gap-5"
       >
         <div className="text-center">
           <div className="text-4xl mb-3" style={{ fontFamily: QURAN_FONT }}>
             اقرأ
           </div>
-          <h2 className="text-xl font-bold text-[#0F5C4C]">اسمك إيه؟</h2>
+          <h2 className="text-xl font-bold text-[#1B4D3E]">اسمك إيه؟</h2>
           <p className="text-xs text-[#5B6B62] mt-1.5">
             عشان نحفظ تقدّمك ونرحّب بيك كل مرة
           </p>
@@ -186,7 +198,7 @@ function NameDialog({ initial = "", onSave, onClose }) {
           onChange={(e) => setValue(e.target.value)}
           placeholder="اكتب اسمك هنا…"
           maxLength={40}
-          className="bg-[#FBF8EF] border border-[#E4DCC3] rounded-xl px-4 py-3 text-center text-lg outline-none focus:border-[#0F5C4C]"
+          className="bg-[#FBF8EF] border border-[#E4DCC3] rounded-xl px-4 py-3 text-center text-lg outline-none focus:border-[#1B4D3E]"
         />
         <div className="flex gap-2">
           <button
@@ -194,7 +206,7 @@ function NameDialog({ initial = "", onSave, onClose }) {
             disabled={!ok}
             className={`flex-1 py-3 rounded-xl font-bold ${
               ok
-                ? "bg-[#0F5C4C] text-[#F6F1E4]"
+                ? "bg-[#1B4D3E] text-[#F5F0E8]"
                 : "bg-[#E4DCC3] text-[#A79E86] cursor-not-allowed"
             }`}
           >
@@ -485,19 +497,19 @@ function LevelCard({ level, active, locked, done, onClick }) {
         locked
           ? "bg-[#F1EDE0] border-[#E4DCC3] text-[#A79E86] cursor-not-allowed"
           : active
-          ? "bg-[#0F5C4C] border-[#0F5C4C] text-[#F6F1E4] shadow-lg shadow-[#0F5C4C]/20"
-          : "bg-[#FBF8EF] border-[#E4DCC3] text-[#20342C] hover:border-[#0F5C4C]/50"
+          ? "bg-[#1B4D3E] border-[#1B4D3E] text-[#F5F0E8] shadow-lg shadow-[#1B4D3E]/20"
+          : "bg-[#FBF8EF] border-[#E4DCC3] text-[#20342C] hover:border-[#1B4D3E]/50"
       }`}
     >
       {done && (
-        <span className="absolute top-3 left-3 text-xs bg-[#E7C873] text-[#1E2A24] rounded-full w-6 h-6 grid place-items-center font-bold">
+        <span className="absolute top-3 left-3 text-xs bg-[#D4A853] text-[#1E2A24] rounded-full w-6 h-6 grid place-items-center font-bold">
           ✓
         </span>
       )}
       {locked && <span className="absolute top-3 left-3 text-sm">🔒</span>}
       <div
         className={`text-3xl mb-3 ${
-          locked ? "text-[#C3BAA0]" : active ? "text-[#E7C873]" : "text-[#0F5C4C]"
+          locked ? "text-[#C3BAA0]" : active ? "text-[#D4A853]" : "text-[#1B4D3E]"
         }`}
         style={{ fontFamily: UI_FONT }}
       >
@@ -506,7 +518,7 @@ function LevelCard({ level, active, locked, done, onClick }) {
       <div className="font-bold text-lg mb-1">{level.title}</div>
       <div
         className={`text-sm ${
-          locked ? "text-[#A79E86]" : active ? "text-[#F6F1E4]/80" : "text-[#5B6B62]"
+          locked ? "text-[#A79E86]" : active ? "text-[#F5F0E8]/80" : "text-[#5B6B62]"
         }`}
       >
         {locked ? "أكمل المستوى السابق أولًا" : level.desc}
@@ -517,7 +529,7 @@ function LevelCard({ level, active, locked, done, onClick }) {
 function VoiceWarning({ status }) {
   if (status === "ready" || status === "checking") return null;
   return (
-    <div className="rounded-2xl bg-[#FBF3E2] border border-[#E7C873] px-5 py-4 text-sm text-[#6B5A2E] mb-6">
+    <div className="rounded-2xl bg-[#FBF3E2] border border-[#D4A853] px-5 py-4 text-sm text-[#6B5A2E] mb-6">
       <strong className="block mb-1">النطق الآلي غير متاح على هذا الجهاز</strong>
       {status === "unsupported"
         ? "المتصفح لا يدعم النطق الآلي."
@@ -647,11 +659,11 @@ const AyahLine = React.memo(function AyahLine({
               tappable ? "cursor-pointer" : "cursor-default opacity-60"
             } ${
               isActive
-                ? "bg-[#E7C873] text-[#1E2A24] scale-105"
+                ? "bg-[#D4A853] text-[#1E2A24] scale-105"
                 : inRange
-                ? "bg-[#0F5C4C]/15"
+                ? "bg-[#1B4D3E]/15"
                 : tappable
-                ? "hover:bg-[#0F5C4C]/10 dark:hover:bg-[#E7C873]/15"
+                ? "hover:bg-[#1B4D3E]/10 dark:hover:bg-[#D4A853]/15"
                 : ""
             }`}
           >
@@ -659,7 +671,7 @@ const AyahLine = React.memo(function AyahLine({
           </span>
         );
       })}
-      <span className="text-[#0F5C4C] dark:text-[#8FD6C0] mx-1 select-none">
+      <span className="text-[#1B4D3E] dark:text-[#8FD6C0] mx-1 select-none">
         ۝{toArabicDigits(ayah)}
       </span>
       {/* زر تفسير الآية دي وحدها */}
@@ -670,8 +682,8 @@ const AyahLine = React.memo(function AyahLine({
         }}
         className={`align-middle mx-1 text-[0.5em] leading-none px-1.5 py-1 rounded-md border transition-colors ${
           tafsirOpen
-            ? "bg-[#0F5C4C] border-[#0F5C4C] text-[#F6F1E4]"
-            : "border-[#E4DCC3] dark:border-[#3A5148] text-[#5B6B62] dark:text-[#A9BDB2] hover:border-[#0F5C4C]"
+            ? "bg-[#1B4D3E] border-[#1B4D3E] text-[#F5F0E8]"
+            : "border-[#E4DCC3] dark:border-[#3A5148] text-[#5B6B62] dark:text-[#A9BDB2] hover:border-[#1B4D3E]"
         }`}
         title={`تفسير الآية ${toArabicDigits(ayah)}`}
         aria-label={`تفسير الآية ${toArabicDigits(ayah)}`}
@@ -692,14 +704,14 @@ function SurahPicker({ current, onPick, onClose, recents = [] }) {
   }, [q]);
   return (
     <div className="fixed inset-0 bg-[#1E2A24]/40 z-50 flex items-start justify-center p-4 md:p-10" dir="rtl">
-      <div className="bg-[#FFFDF6] rounded-3xl border border-[#E4DCC3] w-full max-w-lg max-h-full flex flex-col overflow-hidden">
+      <div className="bg-[#FFFFFF] rounded-3xl border border-[#E4DCC3] w-full max-w-lg max-h-full flex flex-col overflow-hidden">
         <div className="p-5 border-b border-[#E4DCC3] flex items-center gap-3">
           <input
             autoFocus
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="ابحث باسم السورة أو رقمها…"
-            className="flex-1 bg-[#FBF8EF] border border-[#E4DCC3] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#0F5C4C]"
+            className="flex-1 bg-[#FBF8EF] border border-[#E4DCC3] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#1B4D3E]"
           />
           <button onClick={onClose} className="text-[#5B6B62] text-sm font-semibold px-2">
             ✕
@@ -716,7 +728,7 @@ function SurahPicker({ current, onPick, onClose, recents = [] }) {
                   <button
                     key={s.id}
                     onClick={() => onPick(s.id)}
-                    className="px-3 py-1.5 rounded-lg text-sm border border-[#E4DCC3] dark:border-[#3A5148] text-[#0F5C4C] dark:text-[#8FD6C0]"
+                    className="px-3 py-1.5 rounded-lg text-sm border border-[#E4DCC3] dark:border-[#3A5148] text-[#1B4D3E] dark:text-[#8FD6C0]"
                     style={{ fontFamily: UI_FONT }}
                   >
                     {s.name}
@@ -731,13 +743,13 @@ function SurahPicker({ current, onPick, onClose, recents = [] }) {
               key={s.id}
               onClick={() => onPick(s.id)}
               className={`w-full text-right px-5 py-3 flex items-center justify-between border-b border-[#F1EAD6] transition-colors ${
-                s.id === current ? "bg-[#0F5C4C] text-[#F6F1E4]" : "hover:bg-[#F6F1E4]"
+                s.id === current ? "bg-[#1B4D3E] text-[#F5F0E8]" : "hover:bg-[#F5F0E8]"
               }`}
             >
               <span className="flex items-center gap-3">
                 <span
                   className={`text-xs w-7 h-7 grid place-items-center rounded-full ${
-                    s.id === current ? "bg-[#E7C873] text-[#1E2A24]" : "bg-[#F1EAD6] text-[#5B6B62]"
+                    s.id === current ? "bg-[#D4A853] text-[#1E2A24]" : "bg-[#F1EAD6] text-[#5B6B62]"
                   }`}
                 >
                   {toArabicDigits(s.id)}
@@ -746,7 +758,7 @@ function SurahPicker({ current, onPick, onClose, recents = [] }) {
                   {s.name}
                 </span>
               </span>
-              <span className={`text-xs ${s.id === current ? "text-[#F6F1E4]/70" : "text-[#8A7A4E]"}`}>
+              <span className={`text-xs ${s.id === current ? "text-[#F5F0E8]/70" : "text-[#8A7A4E]"}`}>
                 {s.place === "م" ? "مكية" : "مدنية"} · {toArabicDigits(s.ayat)} آية
               </span>
             </button>
@@ -765,7 +777,7 @@ const REPEAT_OPTIONS = [
   { value: 5, label: "٥ مرات" },
   { value: Infinity, label: "بلا توقف" },
 ];
-function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma }) {
+function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma, deepSurah, onDeepSurahDone }) {
   const audioRef = useRef(null);
   const rafRef = useRef(null);
   const gapRef = useRef(null);
@@ -1062,13 +1074,22 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma }) {
     const el = document.getElementById(`ayah-${pendingAyah}`);
     if (!el) return;
     el.scrollIntoView({ behavior: "smooth", block: "center" });
-    el.classList.add("ring-2", "ring-[#E7C873]", "rounded-lg");
+    el.classList.add("ring-2", "ring-[#D4A853]", "rounded-lg");
     const t = setTimeout(() => {
-      el.classList.remove("ring-2", "ring-[#E7C873]", "rounded-lg");
+      el.classList.remove("ring-2", "ring-[#D4A853]", "rounded-lg");
       setPendingAyah(null);
     }, 2200);
     return () => clearTimeout(t);
   }, [pendingAyah, data]);
+
+  // سورة جاية من رابط عميق (مثلاً إشعار الكهف يوم الجمعة)
+  useEffect(() => {
+    if (!deepSurah) return;
+    stopAll();
+    setSurah(deepSurah);
+    onDeepSurahDone?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deepSurah]);
 
   // آخر موضع + السور الأخيرة
   useEffect(() => {
@@ -1091,16 +1112,16 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma }) {
   };
   const isLong = (data?.durationMs || 0) > 20 * 60 * 1000;
   return (
-    <div className="rounded-3xl border border-[#E4DCC3] bg-[#FFFDF6] p-6 md:p-10 shadow-sm">
+    <div className="rounded-3xl border border-[#E4DCC3] bg-[#FFFFFF] p-6 md:p-10 shadow-sm">
       <audio ref={audioRef} preload="metadata" />
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-2">
           <button
             onClick={() => setPickerOpen(true)}
-            className="flex items-center gap-2 bg-[#0F5C4C] text-[#F6F1E4] rounded-xl px-4 py-2.5 font-bold"
+            className="flex items-center gap-2 bg-[#1B4D3E] text-[#F5F0E8] rounded-xl px-4 py-2.5 font-bold"
           >
             <span style={{ fontFamily: UI_FONT }}>سورة {surahMeta.name}</span>
-            <span className="text-[#E7C873] text-xs">▾</span>
+            <span className="text-[#D4A853] text-xs">▾</span>
           </button>
           <button
             onClick={() => {
@@ -1118,7 +1139,7 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma }) {
               setVoiceSearch(true);
               setSearchOpen(true);
             }}
-            className="rounded-xl w-12 h-11 grid place-items-center text-xl bg-[#E7C873] text-[#1E2A24] font-bold"
+            className="rounded-xl w-12 h-11 grid place-items-center text-xl bg-[#D4A853] text-[#1E2A24] font-bold"
             title="بحث صوتي"
             aria-label="بحث صوتي"
           >
@@ -1138,8 +1159,8 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma }) {
               onClick={() => changeReciter(r.id)}
               className={`px-4 py-2 rounded-full text-sm font-semibold border transition-colors ${
                 reciterId === r.id
-                  ? "bg-[#0F5C4C] border-[#0F5C4C] text-[#F6F1E4]"
-                  : "border-[#E4DCC3] text-[#5B6B62] hover:border-[#0F5C4C]/50"
+                  ? "bg-[#1B4D3E] border-[#1B4D3E] text-[#F5F0E8]"
+                  : "border-[#E4DCC3] text-[#5B6B62] hover:border-[#1B4D3E]/50"
               }`}
             >
               {r.name}
@@ -1159,8 +1180,8 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma }) {
               disabled={khatma.ids.has(surah)}
               className={`px-3 py-1 rounded-lg font-semibold ${
                 khatma.ids.has(surah)
-                  ? "bg-[#0F5C4C]/10 text-[#0F5C4C] dark:text-[#8FD6C0] cursor-default"
-                  : "bg-[#E7C873] text-[#1E2A24]"
+                  ? "bg-[#1B4D3E]/10 text-[#1B4D3E] dark:text-[#8FD6C0] cursor-default"
+                  : "bg-[#D4A853] text-[#1E2A24]"
               }`}
             >
               {khatma.ids.has(surah) ? "✓ اتقرأت" : "علّم كمقروءة"}
@@ -1168,12 +1189,12 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma }) {
           </div>
           <div className="h-2 bg-[#E4DCC3] dark:bg-[#3A5148] rounded-full overflow-hidden">
             <div
-              className="h-full bg-[#0F5C4C] transition-all duration-500"
+              className="h-full bg-[#1B4D3E] transition-all duration-500"
               style={{ width: `${(khatma.count / 114) * 100}%` }}
             />
           </div>
           {khatma.complete && (
-            <p className="mt-2 text-center text-sm font-bold text-[#0F5C4C] dark:text-[#E7C873]">
+            <p className="mt-2 text-center text-sm font-bold text-[#1B4D3E] dark:text-[#D4A853]">
               🎉 مبروك! ختمت القرآن
             </p>
           )}
@@ -1188,8 +1209,8 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma }) {
             !data
               ? "bg-[#E4DCC3] text-[#A79E86] cursor-not-allowed"
               : playing
-              ? "bg-[#8A4E4E] text-[#F6F1E4]"
-              : "bg-[#0F5C4C] text-[#F6F1E4]"
+              ? "bg-[#8A4E4E] text-[#F5F0E8]"
+              : "bg-[#1B4D3E] text-[#F5F0E8]"
           }`}
         >
           {playing ? "إيقاف ■" : "شغّل السورة ▶"}
@@ -1207,7 +1228,7 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma }) {
             onClick={() => setRepeat(o.value)}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
               repeat === o.value
-                ? "bg-[#E7C873] border-[#E7C873] text-[#1E2A24]"
+                ? "bg-[#D4A853] border-[#D4A853] text-[#1E2A24]"
                 : "border-[#E4DCC3] text-[#5B6B62]"
             }`}
           >
@@ -1224,7 +1245,7 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma }) {
           }}
           className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
             rangeMode
-              ? "bg-[#0F5C4C] border-[#0F5C4C] text-[#F6F1E4]"
+              ? "bg-[#1B4D3E] border-[#1B4D3E] text-[#F5F0E8]"
               : "border-[#E4DCC3] text-[#5B6B62]"
           }`}
         >
@@ -1234,7 +1255,7 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma }) {
           onClick={() => setTajweed((v) => !v)}
           className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
             tajweed
-              ? "bg-[#2E9E6B] border-[#2E9E6B] text-[#F6F1E4]"
+              ? "bg-[#2E9E6B] border-[#2E9E6B] text-[#F5F0E8]"
               : "border-[#E4DCC3] dark:border-[#3A5148] text-[#5B6B62] dark:text-[#A9BDB2]"
           }`}
           title="تلوين أحكام التجويد من بيانات مُدقّقة"
@@ -1295,7 +1316,7 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma }) {
         </div>
       )}
       {rangeMode && (
-        <p className="text-xs text-[#0F5C4C] bg-[#0F5C4C]/8 rounded-xl px-4 py-2.5 mb-5">
+        <p className="text-xs text-[#1B4D3E] bg-[#1B4D3E]/8 rounded-xl px-4 py-2.5 mb-5">
           {rangeStart == null
             ? "المس الكلمة الأولى في المقطع…"
             : "المس الكلمة الأخيرة — ثم يُكرَّر المقطع حسب عدد التكرار."}
@@ -1315,7 +1336,7 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma }) {
       ) : data ? (
         <div
           dir="rtl"
-          className="text-[#1E2A24] dark:text-[#F6F1E4] text-justify select-none"
+          className="text-[#1E2A24] dark:text-[#F5F0E8] text-justify select-none"
           style={{
             fontFamily: QURAN_FONT,
             fontSize: `${settings?.fontSize ?? 2}rem`,
@@ -1353,7 +1374,7 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma }) {
         </div>
       ) : null}
       <div className="mt-8 flex items-start gap-3 text-sm text-[#5B6B62] border-t border-[#E4DCC3] pt-5">
-        <span className="text-[#0F5C4C] font-bold">↳</span>
+        <span className="text-[#1B4D3E] font-bold">↳</span>
         <p>
           لمس أي كلمة بيقفز لموضعها <strong>الحقيقي</strong> في التلاوة — حدود كل
           كلمة متقاسة بالمللي ثانية بمحاذاة صوتية، مش تقسيم تقريبي. الصوت هو ملف
@@ -1366,7 +1387,7 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma }) {
           عشان مايزحمش الشاشة وهو مش مستخدَم */}
       {playing && (
         <div
-          className="fixed left-1.5 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center gap-2 bg-[#FFFDF6]/95 dark:bg-[#243830]/95 border border-[#E4DCC3] dark:border-[#3A5148] rounded-full py-3 px-1.5 shadow-lg"
+          className="fixed left-1.5 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center gap-2 bg-[#FFFFFF]/95 dark:bg-[#243830]/95 border border-[#E4DCC3] dark:border-[#3A5148] rounded-full py-3 px-1.5 shadow-lg"
           dir="ltr"
         >
           <span className="text-[9px] text-[#8A7A4E] writing-mode-vertical">بطيء</span>
@@ -1383,7 +1404,7 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma }) {
               }}
               className={`w-7 h-7 grid place-items-center rounded-full text-xs font-bold transition-colors ${
                 followMode === mode
-                  ? "bg-[#0F5C4C] text-[#F6F1E4]"
+                  ? "bg-[#1B4D3E] text-[#F5F0E8]"
                   : "text-[#5B6B62] dark:text-[#A9BDB2]"
               }`}
               title={`سرعة التمرير: ${label}`}
@@ -1429,7 +1450,7 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma }) {
           onClick={() => setRulePopup(null)}
         >
           <div
-            className="bg-[#FFFDF6] dark:bg-[#243830] rounded-3xl border border-[#E4DCC3] dark:border-[#3A5148] max-w-sm p-6 text-center"
+            className="bg-[#FFFFFF] dark:bg-[#243830] rounded-3xl border border-[#E4DCC3] dark:border-[#3A5148] max-w-sm p-6 text-center"
             onClick={(e) => e.stopPropagation()}
           >
             <div
@@ -1438,12 +1459,12 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma }) {
               <span className="font-bold text-lg">{TAJWEED_RULES[rulePopup].name}</span>
             </div>
             <div className="text-xs text-[#8A7A4E] mb-2">{TAJWEED_RULES[rulePopup].short}</div>
-            <p className="text-sm text-[#1E2A24] dark:text-[#F6F1E4] leading-relaxed">
+            <p className="text-sm text-[#1E2A24] dark:text-[#F5F0E8] leading-relaxed">
               {TAJWEED_RULES[rulePopup].desc}
             </p>
             <button
               onClick={() => setRulePopup(null)}
-              className="mt-5 bg-[#0F5C4C] text-[#F6F1E4] px-6 py-2.5 rounded-xl font-bold text-sm"
+              className="mt-5 bg-[#1B4D3E] text-[#F5F0E8] px-6 py-2.5 rounded-xl font-bold text-sm"
             >
               فهمت
             </button>
@@ -1462,7 +1483,7 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma }) {
       {popup && (
         <div className="fixed inset-0 z-[55]" onClick={() => setPopup(null)}>
           <div
-            className="absolute bg-[#1E2A24] text-[#F6F1E4] rounded-2xl px-4 py-3 shadow-xl max-w-[16rem] text-center"
+            className="absolute bg-[#1E2A24] text-[#F5F0E8] rounded-2xl px-4 py-3 shadow-xl max-w-[16rem] text-center"
             style={{
               left: Math.min(Math.max(popup.x - 100, 8), (typeof window !== "undefined" ? window.innerWidth : 400) - 208),
               top: Math.max(popup.y - 96, 8),
@@ -1476,7 +1497,7 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma }) {
               {popup.t}
             </div>
             {popup.r && (
-              <div className="text-[11px] text-[#E7C873] mt-1" dir="ltr">
+              <div className="text-[11px] text-[#D4A853] mt-1" dir="ltr">
                 {popup.r}
               </div>
             )}
@@ -1649,7 +1670,7 @@ function TraceCanvas({ text, guide = true, fontsReady, onResult, resetKey }) {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, box, box);
     if (guide) paintGlyph(ctx, text, box, "#E4DCC3");
-    paintStrokes(ctx, strokesRef.current, box, "#0F5C4C");
+    paintStrokes(ctx, strokesRef.current, box, "#1B4D3E");
   }, [box, guide, text]);
 
   useEffect(() => {
@@ -1690,7 +1711,7 @@ function TraceCanvas({ text, guide = true, fontsReady, onResult, resetKey }) {
     if (Math.hypot(p.x - last.x, p.y - last.y) < 0.004) return;
     s.push(p);
     const ctx = canvasRef.current.getContext("2d");
-    ctx.strokeStyle = "#0F5C4C";
+    ctx.strokeStyle = "#1B4D3E";
     ctx.lineWidth = box * STROKE_RATIO;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
@@ -1729,7 +1750,7 @@ function TraceCanvas({ text, guide = true, fontsReady, onResult, resetKey }) {
         <canvas
           ref={canvasRef}
           style={{ width: "100%", height: box, touchAction: "none" }}
-          className="rounded-3xl border border-[#E4DCC3] bg-[#FFFDF6] touch-none block"
+          className="rounded-3xl border border-[#E4DCC3] bg-[#FFFFFF] touch-none block"
           onPointerDown={onDown}
           onPointerMove={onMove}
           onPointerUp={onUp}
@@ -1744,7 +1765,7 @@ function TraceCanvas({ text, guide = true, fontsReady, onResult, resetKey }) {
           disabled={!strokeCount}
           className={`px-6 py-2.5 rounded-xl font-bold text-sm ${
             strokeCount
-              ? "bg-[#0F5C4C] text-[#F6F1E4]"
+              ? "bg-[#1B4D3E] text-[#F5F0E8]"
               : "bg-[#E4DCC3] text-[#A79E86] cursor-not-allowed"
           }`}
         >
@@ -1833,7 +1854,7 @@ function Quiz({ lesson, onPass, onRetry, speak, voiceReady, fontsReady, onAnswer
         </p>
         <button
           onClick={onPass}
-          className="bg-[#0F5C4C] text-[#F6F1E4] px-8 py-3 rounded-xl font-bold"
+          className="bg-[#1B4D3E] text-[#F5F0E8] px-8 py-3 rounded-xl font-bold"
         >
           إنهاء الدرس
         </button>
@@ -1847,7 +1868,7 @@ function Quiz({ lesson, onPass, onRetry, speak, voiceReady, fontsReady, onAnswer
         <div className="text-xs text-[#8A7A4E]">سؤال الكتابة — الأخير</div>
         <div className="text-center">
           <p className="text-sm text-[#5B6B62] mb-2">ارسم بإصبعك:</p>
-          <div className="text-3xl font-bold text-[#0F5C4C]">
+          <div className="text-3xl font-bold text-[#1B4D3E]">
             {writeTarget.name || writeTarget.g}
           </div>
           {!writeTarget.name && (
@@ -1875,7 +1896,7 @@ function Quiz({ lesson, onPass, onRetry, speak, voiceReady, fontsReady, onAnswer
             <button
               onClick={() => setIdx((i) => i + 1)}
               className={`px-6 py-2.5 rounded-xl font-bold text-sm ${
-                writePassed ? "bg-[#E7C873] text-[#1E2A24]" : "bg-[#0F5C4C] text-[#F6F1E4]"
+                writePassed ? "bg-[#D4A853] text-[#1E2A24]" : "bg-[#1B4D3E] text-[#F5F0E8]"
               }`}
             >
               {writePassed ? "إنهاء الاختبار" : "تخطّي وإنهاء"}
@@ -1894,7 +1915,7 @@ function Quiz({ lesson, onPass, onRetry, speak, voiceReady, fontsReady, onAnswer
     return (
       <div className="flex flex-col items-center gap-5 text-center">
         <div className="text-5xl">{passed ? "✓" : "↺"}</div>
-        <h2 className="text-xl font-bold text-[#0F5C4C]">
+        <h2 className="text-xl font-bold text-[#1B4D3E]">
           {toArabicDigits(finalScore)} من {toArabicDigits(totalQuestions)}
         </h2>
         {writeTarget && writeResult && (
@@ -1909,7 +1930,7 @@ function Quiz({ lesson, onPass, onRetry, speak, voiceReady, fontsReady, onAnswer
         <button
           onClick={passed ? onPass : onRetry}
           className={`px-8 py-3 rounded-xl font-bold ${
-            passed ? "bg-[#E7C873] text-[#1E2A24]" : "bg-[#0F5C4C] text-[#F6F1E4]"
+            passed ? "bg-[#D4A853] text-[#1E2A24]" : "bg-[#1B4D3E] text-[#F5F0E8]"
           }`}
         >
           {passed ? "رجوع للمستويات" : "إعادة الدرس"}
@@ -1919,7 +1940,7 @@ function Quiz({ lesson, onPass, onRetry, speak, voiceReady, fontsReady, onAnswer
   }
   const prompt =
     lesson.quiz === "name" && q.answer.name ? (
-      <span className="text-3xl font-bold text-[#0F5C4C]">{q.answer.name}</span>
+      <span className="text-3xl font-bold text-[#1B4D3E]">{q.answer.name}</span>
     ) : peek ? (
       <span className="text-[4rem] leading-none" style={{ fontFamily: QURAN_FONT }}>
         {q.answer.g}
@@ -1951,7 +1972,7 @@ function Quiz({ lesson, onPass, onRetry, speak, voiceReady, fontsReady, onAnswer
         {voiceReady && (
           <button
             onClick={() => speak(q.answer.g)}
-            className="text-2xl text-[#0F5C4C]"
+            className="text-2xl text-[#1B4D3E]"
             aria-label="استمع"
           >
             🔊
@@ -1977,7 +1998,7 @@ function Quiz({ lesson, onPass, onRetry, speak, voiceReady, fontsReady, onAnswer
               disabled={!!picked}
               className={`rounded-2xl border py-6 px-3 text-[2.5rem] leading-none transition-colors ${
                 state === "right"
-                  ? "bg-[#0F5C4C] border-[#0F5C4C] text-[#F6F1E4]"
+                  ? "bg-[#1B4D3E] border-[#1B4D3E] text-[#F5F0E8]"
                   : state === "wrong"
                   ? "bg-[#FBEDED] border-[#8A4E4E] text-[#8A4E4E]"
                   : "bg-[#FBF8EF] border-[#E4DCC3] text-[#1E2A24]"
@@ -2085,13 +2106,13 @@ function LessonView({ audience, levelId, onClose, onComplete, fontsReady, learni
       ? "انتقل للكتابة"
       : "ابدأ الاختبار";
   return (
-    <div className="fixed inset-0 bg-[#F6F1E4] z-50 flex flex-col overflow-y-auto" dir="rtl">
+    <div className="fixed inset-0 bg-[#F5F0E8] z-50 flex flex-col overflow-y-auto" dir="rtl">
       <audio ref={ayahAudioRef} preload="none" />
       <div className="max-w-3xl w-full mx-auto px-6 py-5 flex items-center justify-between">
         <button onClick={onClose} className="text-[#5B6B62] text-sm font-semibold">
           إغلاق ✕
         </button>
-        <span className="text-sm font-bold text-[#0F5C4C]">{lesson.title}</span>
+        <span className="text-sm font-bold text-[#1B4D3E]">{lesson.title}</span>
       </div>
 
       {/* مؤشر المراحل الثلاث */}
@@ -2100,7 +2121,7 @@ function LessonView({ audience, levelId, onClose, onComplete, fontsReady, learni
           <div key={p.id} className="flex-1 flex flex-col gap-1.5">
             <div className="h-1.5 bg-[#E4DCC3] rounded-full overflow-hidden">
               <div
-                className="h-full bg-[#0F5C4C] transition-all duration-300"
+                className="h-full bg-[#1B4D3E] transition-all duration-300"
                 style={{
                   width:
                     i < phaseIndex
@@ -2115,7 +2136,7 @@ function LessonView({ audience, levelId, onClose, onComplete, fontsReady, learni
             </div>
             <span
               className={`text-[11px] text-center ${
-                i === phaseIndex ? "text-[#0F5C4C] font-bold" : "text-[#A79E86]"
+                i === phaseIndex ? "text-[#1B4D3E] font-bold" : "text-[#A79E86]"
               }`}
             >
               {p.label}
@@ -2141,10 +2162,10 @@ function LessonView({ audience, levelId, onClose, onComplete, fontsReady, learni
               {current.g}
             </button>
             {current.name && (
-              <div className="text-2xl font-bold text-[#0F5C4C]">{current.name}</div>
+              <div className="text-2xl font-bold text-[#1B4D3E]">{current.name}</div>
             )}
             {hard.includes(current.g) && (
-              <div className="flex items-center gap-2 text-xs bg-[#FBF3E2] border border-[#E7C873] text-[#6B5A2E] rounded-xl px-4 py-2.5">
+              <div className="flex items-center gap-2 text-xs bg-[#FBF3E2] border border-[#D4A853] text-[#6B5A2E] rounded-xl px-4 py-2.5">
                 <span>📌 الحرف ده صعب عليك — ادرسه تاني بالراحة</span>
                 <button
                   onClick={() => setStep(0)}
@@ -2164,13 +2185,13 @@ function LessonView({ audience, levelId, onClose, onComplete, fontsReady, learni
             <div className="flex flex-col items-center gap-3">
               <button
                 onClick={advance}
-                className="bg-[#0F5C4C] text-[#F6F1E4] px-8 py-3 rounded-xl font-bold"
+                className="bg-[#1B4D3E] text-[#F5F0E8] px-8 py-3 rounded-xl font-bold"
               >
                 {nextLabel}
               </button>
               <button
                 onClick={skipToWrite}
-                className="text-sm text-[#0F5C4C] font-semibold underline underline-offset-4"
+                className="text-sm text-[#1B4D3E] font-semibold underline underline-offset-4"
               >
                 تخطّى القراءة ← اكتب على طول
               </button>
@@ -2183,7 +2204,7 @@ function LessonView({ audience, levelId, onClose, onComplete, fontsReady, learni
                 {toArabicDigits(step + 1)} من {toArabicDigits(total)}
               </p>
               {current.name && (
-                <div className="text-2xl font-bold text-[#0F5C4C]">{current.name}</div>
+                <div className="text-2xl font-bold text-[#1B4D3E]">{current.name}</div>
               )}
             </div>
             <TraceCanvas
@@ -2196,7 +2217,7 @@ function LessonView({ audience, levelId, onClose, onComplete, fontsReady, learni
             {step + 1 < total ? (
               <button
                 onClick={advance}
-                className="bg-[#0F5C4C] text-[#F6F1E4] px-8 py-3 rounded-xl font-bold"
+                className="bg-[#1B4D3E] text-[#F5F0E8] px-8 py-3 rounded-xl font-bold"
               >
                 {nextLabel}
               </button>
@@ -2206,13 +2227,13 @@ function LessonView({ audience, levelId, onClose, onComplete, fontsReady, learni
                 <div className="flex flex-wrap items-center justify-center gap-2">
                   <button
                     onClick={finish}
-                    className="bg-[#E7C873] text-[#1E2A24] px-7 py-3 rounded-xl font-bold"
+                    className="bg-[#D4A853] text-[#1E2A24] px-7 py-3 rounded-xl font-bold"
                   >
                     إنهاء الدرس
                   </button>
                   <button
                     onClick={() => setPhase("quiz")}
-                    className="border border-[#0F5C4C] text-[#0F5C4C] px-7 py-3 rounded-xl font-bold"
+                    className="border border-[#1B4D3E] text-[#1B4D3E] px-7 py-3 rounded-xl font-bold"
                   >
                     ابدأ الاختبار
                   </button>
@@ -2323,7 +2344,11 @@ export default function App() {
           const s = SURAHS.find((x) => x.id === sId);
           if (s) body = `سورة ${s.name} — ${toArabicDigits(s.ayat)} آية. افتحها واقرأها.`;
         }
-        const ok = await showNotification(k.title, { body, tag: `iqra-${kind}-${today}` });
+        const ok = await showNotification(k.title, {
+          body,
+          tag: `iqra-${kind}-${today}`,
+          data: { url: k.link || "/" }, // الوجهة عند الضغط
+        });
         if (ok) {
           shown[kind] = today;
           changed = true;
@@ -2357,10 +2382,40 @@ export default function App() {
 
   const [audience, setAudience] = useState("child");
   const [levelId, setLevelId] = useState(1);
-  // ٤ مجموعات بدل ٩ تبويبات. المحتوى نفسه ما اتغيّرش — بس اتلمّ.
-  const [tab, setTab] = useState("learn");
-  const [subTrain, setSubTrain] = useState("vocal");
-  const [subMore, setSubMore] = useState("tajweed");
+  // ٥ تبويبات في شريط سفلي: الرئيسية / قرآن / تعلم / قبلة / المزيد
+  const [tab, setTab] = useState("home");
+  // «المزيد» بقى بيضم كل الأقسام الفرعية بعد ما التبويبات اتقلّت لـ٥
+  const [subMore, setSubMore] = useState("prayer");
+  const [onboardDone, setOnboardDone] = useState(null); // null = لسه بنقرا
+  const [deepSurah, setDeepSurah] = useState(null);
+
+  // ---------- تنفيذ الروابط العميقة ----------
+  // مصدرين: (١) التطبيق كان مقفول والرابط في العنوان،
+  //         (٢) التطبيق مفتوح والـ Service Worker باعت رسالة.
+  const applyLink = useCallback(
+    (l) => {
+      if (!l) return;
+      setTab(l.tab || "learn");
+      if (l.sub) setSubMore(l.sub);
+      if (l.surah) setDeepSurah(l.surah);
+      if (l.openLesson) {
+        if (l.audience) setAudience(l.audience);
+        if (l.level) setLevelId(l.level);
+        setTimeout(() => {
+          markLessonOpened();
+          setLessonOpen(true);
+        }, 300);
+      }
+      clearLinkParams();
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
+  useEffect(() => {
+    applyLink(parseLink());
+    return onServiceWorkerNavigate(applyLink);
+  }, [applyLink]);
   const [toast, setToast] = useState(null);
 
   // معرّف ثابت للجهاز — بيميّز العضو داخل المجموعة
@@ -2400,13 +2455,13 @@ export default function App() {
   if (!fontsReady || !settingsLoaded) {
     return (
       <div
-        className="min-h-screen bg-[#F6F1E4] flex flex-col items-center justify-center gap-6"
+        className="min-h-screen bg-[#F5F0E8] flex flex-col items-center justify-center gap-6"
         dir="rtl"
       >
-        <div className="text-6xl text-[#0F5C4C]" style={{ fontFamily: QURAN_FONT }}>
+        <div className="text-6xl text-[#1B4D3E]" style={{ fontFamily: QURAN_FONT }}>
           اقرأ
         </div>
-        <div className="w-10 h-10 rounded-full border-4 border-[#E4DCC3] border-t-[#0F5C4C] animate-spin" />
+        <div className="w-10 h-10 rounded-full border-4 border-[#E4DCC3] border-t-[#1B4D3E] animate-spin" />
         <p className="text-xs text-[#8A7A4E]">جاري التحضير…</p>
       </div>
     );
@@ -2414,14 +2469,14 @@ export default function App() {
 
   return (
     <div
-      className="min-h-screen bg-[#F6F1E4] text-[#1E2A24] dark:bg-[#1E2A24] dark:text-[#F6F1E4] transition-colors"
+      className="min-h-screen bg-[#F5F0E8] text-[#1E2A24] dark:bg-[#1E2A24] dark:text-[#F5F0E8] transition-colors"
       dir="rtl"
       style={{ fontFamily: UI_FONT }}
     >
       <header className="border-b border-[#E4DCC3] dark:border-[#3A5148] bg-[#FBF8EF] dark:bg-[#243830]">
         <div className="max-w-3xl mx-auto px-6 py-6 flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-[#0F5C4C] dark:text-[#E7C873] flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-[#1B4D3E] dark:text-[#D4A853] flex items-center gap-2">
               اقرأ
               <StreakBadge streak={streak} toArabicDigits={toArabicDigits} />
             </h1>
@@ -2429,7 +2484,7 @@ export default function App() {
               <span className="flex items-center gap-2 mt-0.5">
                 <button
                   onClick={() => setEditingName(true)}
-                  className="text-xs text-[#5B6B62] dark:text-[#A9BDB2] hover:text-[#0F5C4C] transition-colors"
+                  className="text-xs text-[#5B6B62] dark:text-[#A9BDB2] hover:text-[#1B4D3E] transition-colors"
                   title="اضغط لتغيير الاسم"
                 >
                   مرحباً يا {name} ✎
@@ -2440,7 +2495,7 @@ export default function App() {
                     if (r === "copied") showToast("تم النسخ!");
                     else if (r === "failed") showToast("تعذّرت المشاركة");
                   }}
-                  className="text-xs text-[#0F5C4C] dark:text-[#8FD6C0] hover:opacity-70"
+                  className="text-xs text-[#1B4D3E] dark:text-[#8FD6C0] hover:opacity-70"
                   title="شارك التطبيق"
                 >
                   شارك 📤
@@ -2457,7 +2512,7 @@ export default function App() {
                     if (r === "copied") showToast("تم النسخ!");
                     else if (r === "failed") showToast("تعذّرت المشاركة");
                   }}
-                  className="text-xs text-[#0F5C4C] dark:text-[#8FD6C0] hover:opacity-70"
+                  className="text-xs text-[#1B4D3E] dark:text-[#8FD6C0] hover:opacity-70"
                   title="شارك التطبيق"
                 >
                   شارك 📤
@@ -2474,67 +2529,67 @@ export default function App() {
               </div>
             )}
           </div>
-          <nav className="flex gap-1 bg-[#F1EAD6] dark:bg-[#1E2A24] rounded-full p-1">
+          {/* التنقّل اتنقل للشريط السفلي — الهيدر بقى للهوية والسلسلة بس */}
+        </div>
+      </header>
+      <main className="max-w-3xl mx-auto px-5 py-6 iqra-page">
+        {/* تبويبات فرعية للمجموعات المركّبة */}
+        {tab === "more" && (
+          <div className="flex flex-wrap gap-2 mb-7">
             {[
-              ["learn", "تعلّم", "📚"],
-              ["quran", "المصحف", "📖"],
-              ["train", "تدريب", "🎯"],
-              ["more", "المزيد", "⚙️"],
+              ["prayer", "المواقيت", "🕌"],
+              ["muazzin", "الموذّن", "🔊"],
+              ["hijri", "التقويم", "🗓️"],
+              ["coach", "مدرّب التلاوة", "🎙️"],
+              ["vocal", "تدريب الصوت", "🫁"],
+              ["confidence", "اقرأ بثقة", "🪞"],
+              ["hifz", "الحفظ", "🧠"],
+              ["tajweed", "التجويد", "◌ّ"],
+              ["daily", "المسابقة", "🏅"],
+              ["groups", "مجموعاتي", "👥"],
+              ["teacher", "المعلّم", "🔐"],
+              ["share", "شارك", "📤"],
+              ["settings", "الإعدادات", "⚙️"],
             ].map(([key, label, icon]) => (
               <button
                 key={key}
-                onClick={() => setTab(key)}
-                className={`px-2.5 md:px-4 py-2 rounded-full text-sm font-semibold transition-colors whitespace-nowrap flex items-center gap-1.5 ${
-                  tab === key
-                    ? "bg-[#0F5C4C] text-[#F6F1E4]"
-                    : "text-[#5B6B62] dark:text-[#A9BDB2]"
+                onClick={() => setSubMore(key)}
+                className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-colors flex items-center gap-1.5 ${
+                  subMore === key
+                    ? "bg-[#1B4D3E] border-[#1B4D3E] text-[#F5F0E8]"
+                    : "iqra-card border-transparent text-[#5B6B62] dark:text-[#A9BDB2]"
                 }`}
               >
                 <span aria-hidden="true">{icon}</span>
-                <span className="hidden xs:inline sm:inline">{label}</span>
+                {label}
               </button>
             ))}
-          </nav>
-        </div>
-      </header>
-      <main className="max-w-3xl mx-auto px-6 py-10">
-        {/* تبويبات فرعية للمجموعات المركّبة */}
-        {(tab === "train" || tab === "more") && (
-          <div className="flex flex-wrap gap-2 mb-7">
-            {(tab === "train"
-              ? [
-                  ["vocal", "تدريب الصوت", "🫁"],
-                  ["confidence", "اقرأ بثقة", "🪞"],
-                  ["hifz", "الحفظ", "🧠"],
-                ]
-              : [
-                  ["tajweed", "التجويد", "◌ّ"],
-                  ["daily", "المسابقة", "🏅"],
-                  ["groups", "مجموعاتي", "👥"],
-                  ["teacher", "المعلّم", "🔐"],
-                  ["share", "شارك التطبيق", "📤"],
-                  ["settings", "الإعدادات", "⚙️"],
-                ]
-            ).map(([key, label, icon]) => {
-              const active = (tab === "train" ? subTrain : subMore) === key;
-              const set = tab === "train" ? setSubTrain : setSubMore;
-              return (
-                <button
-                  key={key}
-                  onClick={() => set(key)}
-                  className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-colors flex items-center gap-1.5 ${
-                    active
-                      ? "bg-[#0F5C4C] border-[#0F5C4C] text-[#F6F1E4]"
-                      : "bg-[#FBF8EF] dark:bg-[#243830] border-[#E4DCC3] dark:border-[#3A5148] text-[#5B6B62] dark:text-[#A9BDB2]"
-                  }`}
-                >
-                  <span aria-hidden="true">{icon}</span>
-                  {label}
-                </button>
-              );
-            })}
           </div>
         )}
+
+        {tab === "home" && (
+          <HomeScreen
+            name={name}
+            streak={streak}
+            progress={progress}
+            audience={audience}
+            levels={levels}
+            levelId={levelId}
+            settings={settings}
+            toArabicDigits={toArabicDigits}
+            onStartLesson={() => {
+              if (currentLocked) return setTab("learn");
+              markLessonOpened();
+              setLessonOpen(true);
+            }}
+            onGo={(t, sub) => {
+              setTab(t);
+              if (sub) setSubMore(sub);
+            }}
+          />
+        )}
+
+        {tab === "qibla" && <QiblaCompass toArabicDigits={toArabicDigits} />}
 
         {/* هدف اليوم + عدّاد التسبيح — تحت الهيدر في الشاشة الرئيسية */}
         {tab === "learn" && (
@@ -2571,7 +2626,7 @@ export default function App() {
                   onClick={() => setAudience(key)}
                   className={`flex-1 py-3 rounded-xl font-semibold text-sm border ${
                     audience === key
-                      ? "bg-[#E7C873] border-[#E7C873] text-[#1E2A24]"
+                      ? "bg-[#D4A853] border-[#D4A853] text-[#1E2A24]"
                       : "border-[#E4DCC3] text-[#5B6B62]"
                   }`}
                 >
@@ -2601,9 +2656,9 @@ export default function App() {
                 />
               ))}
             </div>
-            <div className="rounded-2xl bg-[#0F5C4C] text-[#F6F1E4] p-6 flex items-center justify-between gap-4">
+            <div className="rounded-2xl bg-[#1B4D3E] text-[#F5F0E8] p-6 flex items-center justify-between gap-4">
               <div>
-                <div className="text-sm text-[#F6F1E4]/70 mb-1">المستوى الحالي</div>
+                <div className="text-sm text-[#F5F0E8]/70 mb-1">المستوى الحالي</div>
                 <div className="font-bold text-lg">
                   {levels.find((l) => l.id === levelId)?.title}
                 </div>
@@ -2616,8 +2671,8 @@ export default function App() {
                 disabled={currentLocked}
                 className={`px-5 py-2.5 rounded-xl font-bold text-sm ${
                   currentLocked
-                    ? "bg-[#F6F1E4]/20 text-[#F6F1E4]/50 cursor-not-allowed"
-                    : "bg-[#E7C873] text-[#1E2A24]"
+                    ? "bg-[#F5F0E8]/20 text-[#F5F0E8]/50 cursor-not-allowed"
+                    : "bg-[#D4A853] text-[#1E2A24]"
                 }`}
               >
                 {currentLocked ? "مقفول" : "ابدأ الدرس"}
@@ -2631,19 +2686,49 @@ export default function App() {
             updateSettings={updateSettings}
             pushRecentSurah={pushRecentSurah}
             khatma={khatma}
+            deepSurah={deepSurah}
+            onDeepSurahDone={() => setDeepSurah(null)}
           />
         )}
 
-        {tab === "train" && subTrain === "vocal" && <VocalTrainer />}
-        {tab === "train" && subTrain === "confidence" && (
+        {tab === "more" && subMore === "prayer" && (
+          <PrayerTimes
+            settings={settings}
+            onChange={updateSettings}
+            toArabicDigits={toArabicDigits}
+          />
+        )}
+                {tab === "more" && subMore === "muazzin" && (
+          <Muazzin
+            settings={settings}
+            onChange={updateSettings}
+            toArabicDigits={toArabicDigits}
+            onToast={showToast}
+          />
+        )}
+
+        {tab === "more" && subMore === "hijri" && (
+          <IslamicCalendar toArabicDigits={toArabicDigits} />
+        )}
+
+        {tab === "more" && subMore === "coach" && (
+          <AITajweedCoach
+            loadTimings={loadSurahTimings}
+            toArabicDigits={toArabicDigits}
+            onToast={showToast}
+          />
+        )}
+
+        {tab === "more" && subMore === "vocal" && <VocalTrainer />}
+        {tab === "more" && subMore === "confidence" && (
           <ConfidenceMode toArabicDigits={toArabicDigits} />
         )}
-        {tab === "train" && subTrain === "hifz" && <HifzMode toArabicDigits={toArabicDigits} />}
+        {tab === "more" && subMore === "hifz" && <HifzMode toArabicDigits={toArabicDigits} />}
 
         {tab === "more" && subMore === "tajweed" && (
           <div className="flex flex-col gap-6">
             <div>
-              <h2 className="text-xl font-bold text-[#0F5C4C] dark:text-[#E7C873]">
+              <h2 className="text-xl font-bold text-[#1B4D3E] dark:text-[#D4A853]">
                 اختبار التجويد
               </h2>
               <p className="text-xs text-[#5B6B62] dark:text-[#A9BDB2] mt-1">
@@ -2693,7 +2778,7 @@ export default function App() {
 
       {celebrate && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-6 pointer-events-none">
-          <div className="bg-[#0F5C4C] text-[#F6F1E4] rounded-3xl px-8 py-6 shadow-2xl text-center">
+          <div className="bg-[#1B4D3E] text-[#F5F0E8] rounded-3xl px-8 py-6 shadow-2xl text-center">
             <div className="text-6xl mb-2">{celebrate.icon}</div>
             <div className="font-bold text-lg">{celebrate.label}!</div>
             <div className="text-sm opacity-80 mt-1">
@@ -2705,7 +2790,7 @@ export default function App() {
 
       {toast && (
         <div className="fixed bottom-24 inset-x-0 flex justify-center z-[75] px-4 pointer-events-none">
-          <div className="bg-[#1E2A24] text-[#F6F1E4] rounded-2xl px-5 py-3 shadow-xl text-sm font-semibold">
+          <div className="bg-[#1E2A24] text-[#F5F0E8] rounded-2xl px-5 py-3 shadow-xl text-sm font-semibold">
             {toast}
           </div>
         </div>
@@ -2713,7 +2798,7 @@ export default function App() {
 
       {learning.toast && (
         <div className="fixed bottom-6 inset-x-0 flex justify-center z-[70] px-4">
-          <div className="bg-[#0F5C4C] text-[#F6F1E4] rounded-2xl px-5 py-3 shadow-xl flex items-center gap-3">
+          <div className="bg-[#1B4D3E] text-[#F5F0E8] rounded-2xl px-5 py-3 shadow-xl flex items-center gap-3">
             <span className="text-2xl">{learning.toast.icon}</span>
             <div>
               <div className="text-xs opacity-75">شارة جديدة</div>
@@ -2739,14 +2824,30 @@ export default function App() {
         />
       )}
 
-      {(askName || editingName) && (
+      <BottomNav tab={tab} onChange={setTab} />
+
+      {/* الترحيب الأول بقى onboarding كامل بدل حوار الاسم لوحده.
+          حوار الاسم فضل موجود للتعديل بعد كده من الهيدر. */}
+      {askName && (
+        <OnboardingFlow
+          onDone={({ name: n, audience: a, levelId: lv, dailyMinutes }) => {
+            setName(n);
+            setAudience(a);
+            setLevelId(lv);
+            updateSettings({ dailyMinutes, onboardedAt: Date.now() });
+            setTab("home");
+          }}
+        />
+      )}
+
+      {editingName && (
         <NameDialog
           initial={name}
           onSave={(v) => {
             setName(v);
             setEditingName(false);
           }}
-          onClose={editingName ? () => setEditingName(false) : undefined}
+          onClose={() => setEditingName(false)}
         />
       )}
     </div>

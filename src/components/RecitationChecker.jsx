@@ -74,11 +74,11 @@ export default function RecitationChecker({ ayahText, ayahNumber, onClose }) {
       onClick={onClose}
     >
       <div
-        className="bg-[#FFFDF6] dark:bg-[#243830] rounded-3xl border border-[#E4DCC3] dark:border-[#3A5148] w-full max-w-lg p-6 max-h-full overflow-y-auto"
+        className="bg-[#FFFFFF] dark:bg-[#243830] rounded-3xl border border-[#E4DCC3] dark:border-[#3A5148] w-full max-w-lg p-6 max-h-full overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-[#0F5C4C] dark:text-[#E7C873]">
+          <h3 className="font-bold text-[#1B4D3E] dark:text-[#D4A853]">
             سجّل تلاوتك — آية {ayahNumber}
           </h3>
           <button onClick={onClose} className="text-[#5B6B62] text-sm font-semibold">
@@ -88,7 +88,7 @@ export default function RecitationChecker({ ayahText, ayahNumber, onClose }) {
 
         <p
           dir="rtl"
-          className="text-2xl leading-loose text-center mb-5 text-[#1E2A24] dark:text-[#F6F1E4]"
+          className="text-2xl leading-loose text-center mb-5 text-[#1E2A24] dark:text-[#F5F0E8]"
           style={{ fontFamily: QURAN_FONT }}
         >
           {ayahText}
@@ -107,8 +107,8 @@ export default function RecitationChecker({ ayahText, ayahNumber, onClose }) {
                 onClick={listening ? stop : start}
                 className={`px-6 py-3 rounded-xl font-bold ${
                   listening
-                    ? "bg-[#8A4E4E] text-[#F6F1E4] animate-pulse"
-                    : "bg-[#0F5C4C] text-[#F6F1E4]"
+                    ? "bg-[#8A4E4E] text-[#F5F0E8] animate-pulse"
+                    : "bg-[#1B4D3E] text-[#F5F0E8]"
                 }`}
               >
                 {listening ? "إيقاف ■" : "سجّل صوتك 🎤"}
@@ -136,7 +136,7 @@ export default function RecitationChecker({ ayahText, ayahNumber, onClose }) {
                   <div
                     className={`text-4xl font-bold ${
                       result.score >= 80
-                        ? "text-[#0F5C4C]"
+                        ? "text-[#1B4D3E]"
                         : result.score >= 50
                         ? "text-[#8A7A4E]"
                         : "text-[#8A4E4E]"

@@ -37,7 +37,7 @@ export default function TafsirAccordion({ surah, ayah, toArabicDigits, onClose }
       style={{ fontSize: "1rem", lineHeight: 1.6 }}
     >
       <span className="flex items-center justify-between px-4 py-2.5 border-b border-[#E4DCC3] dark:border-[#3A5148] bg-[#efefef] dark:bg-[#16201C]">
-        <span className="text-xs font-bold text-[#0F5C4C] dark:text-[#E7C873]">
+        <span className="text-xs font-bold text-[#1B4D3E] dark:text-[#D4A853]">
           📖 {TAFSIR_NAME} — آية {toArabicDigits(ayah)}
           {state.cached && <span className="font-normal text-[#8A7A4E]"> · محفوظ</span>}
         </span>
@@ -61,7 +61,7 @@ export default function TafsirAccordion({ surah, ayah, toArabicDigits, onClose }
         ) : (
           <>
             <span
-              className="block text-[15px] text-[#1E2A24] dark:text-[#F6F1E4] overflow-y-auto"
+              className="block text-[15px] text-[#1E2A24] dark:text-[#F5F0E8] overflow-y-auto"
               style={{ maxHeight: "14rem", lineHeight: 1.9 }}
             >
               {view.text}
@@ -71,7 +71,7 @@ export default function TafsirAccordion({ surah, ayah, toArabicDigits, onClose }
               {more && (
                 <button
                   onClick={() => setLevel(more)}
-                  className="text-xs font-bold text-[#0F5C4C] dark:text-[#8FD6C0] bg-[#0F5C4C]/10 rounded-lg px-3 py-1.5"
+                  className="text-xs font-bold text-[#1B4D3E] dark:text-[#8FD6C0] bg-[#1B4D3E]/10 rounded-lg px-3 py-1.5"
                 >
                   {LEVELS[more].label} ↓
                 </button>

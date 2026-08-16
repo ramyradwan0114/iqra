@@ -211,6 +211,9 @@ export const DEFAULT_SETTINGS = {
   salawat: null, // شوف utils/reminders.js
   followMode: "ayah", // سرعة تمرير المتابعة: ayah | three | page
   lastLessonDay: null, // لهدف "اقرأ درس"
+  location: null, // { lat, lng, source, name } — محلي فقط، مابيتبعتش لأي سيرفر
+  prayerMethod: null, // طريقة حساب المواقيت
+  madhab: "Shafi", // مذهب العصر
 };
 
 export async function getSettings() {

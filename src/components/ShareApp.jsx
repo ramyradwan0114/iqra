@@ -19,7 +19,7 @@ export default function ShareApp({ onToast }) {
         width: 260,
         margin: 2,
         errorCorrectionLevel: "M",
-        color: { dark: "#0F5C4Cff", light: "#FFFDF6ff" },
+        color: { dark: "#1B4D3Eff", light: "#FFFFFFff" },
       },
       (err) => {
         if (err) setError(true);
@@ -53,21 +53,21 @@ export default function ShareApp({ onToast }) {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h3 className="font-bold text-[#0F5C4C] dark:text-[#E7C873]">شارك التطبيق</h3>
+        <h3 className="font-bold text-[#1B4D3E] dark:text-[#D4A853]">شارك التطبيق</h3>
         <p className="text-xs text-[#5B6B62] dark:text-[#A9BDB2] mt-1">
           التطبيق مجاني بالكامل — شاركه مع أهلك وأصحابك
         </p>
       </div>
 
-      <div className="bg-[#FFFDF6] dark:bg-[#243830] border border-[#E4DCC3] dark:border-[#3A5148] rounded-3xl p-6 flex flex-col items-center gap-4">
-        <div className="bg-[#FFFDF6] rounded-2xl p-3">
+      <div className="bg-[#FFFFFF] dark:bg-[#243830] border border-[#E4DCC3] dark:border-[#3A5148] rounded-3xl p-6 flex flex-col items-center gap-4">
+        <div className="bg-[#FFFFFF] rounded-2xl p-3">
           <canvas ref={canvasRef} className="block rounded-lg" width={260} height={260} />
         </div>
 
         {error ? (
           <p className="text-sm text-[#8A4E4E]">تعذّر توليد الكود</p>
         ) : (
-          <p className="text-sm font-semibold text-[#1E2A24] dark:text-[#F6F1E4]">
+          <p className="text-sm font-semibold text-[#1E2A24] dark:text-[#F5F0E8]">
             امسح الكود وافتح التطبيق
           </p>
         )}
@@ -79,7 +79,7 @@ export default function ShareApp({ onToast }) {
         <div className="flex flex-wrap justify-center gap-2 pt-1">
           <button
             onClick={doShare}
-            className="bg-[#0F5C4C] text-[#F6F1E4] px-5 py-2.5 rounded-xl font-bold text-sm"
+            className="bg-[#1B4D3E] text-[#F5F0E8] px-5 py-2.5 rounded-xl font-bold text-sm"
           >
             {canWebShare() ? "شارك 📤" : "انسخ الرابط 📋"}
           </button>

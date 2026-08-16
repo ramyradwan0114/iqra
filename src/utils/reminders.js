@@ -53,14 +53,16 @@ export function salawatDue(s, now = Date.now()) {
 //   total  : عمري، مابيتصفّرش أبدًا
 // كده "مايتصفّرش لما يقفل التطبيق" متحققة، وفي نفس الوقت "هدف اليوم"
 // يقدر يقيس اليوم لوحده.
+// كل ذِكْر له هدف يومي — الهدف بيظهر كشريط تقدّم تحت العدّاد
 export const ADHKAR = [
-  { id: "subhan", text: "سُبْحَانَ اللَّه", color: "#0F5C4C" },
-  { id: "hamd", text: "الحَمْدُ لِلَّه", color: "#2E7D5B" },
-  { id: "akbar", text: "اللَّهُ أَكْبَر", color: "#8A7A4E" },
-  { id: "tahlil", text: "لَا إِلٰهَ إِلَّا اللَّه", color: "#5B6B62" },
+  { id: "subhan", text: "سُبْحَانَ اللَّه", color: "#1B4D3E", target: 33 },
+  { id: "hamd", text: "الحَمْدُ لِلَّه", color: "#2E7D5B", target: 33 },
+  { id: "akbar", text: "اللَّهُ أَكْبَر", color: "#8A7A4E", target: 33 },
+  { id: "tahlil", text: "لَا إِلٰهَ إِلَّا اللَّه", color: "#5B6B62", target: 33 },
+  { id: "istighfar", text: "أَسْتَغْفِرُ اللَّه", color: "#8A4E4E", target: 33 },
   // الصلاة على النبي ﷺ — لازمة عشان هدف "صلِّ على النبي ١٠٠ مرة"
-  // يبقى قابل للتحقيق أصلًا (الأربعة اللي فوق مفيهمش صلاة على النبي)
-  { id: "salat", text: "اللَّهُمَّ صَلِّ عَلَى مُحَمَّد", color: "#7A5C9E", salawat: true },
+  // يبقى قابل للتحقيق أصلًا (الباقي مفيهوش صلاة على النبي)
+  { id: "salat", text: "اللَّهُمَّ صَلِّ عَلَى مُحَمَّد", color: "#7A5C9E", salawat: true, target: 100 },
 ];
 
 export const MILESTONES = [33, 66, 99, 100];

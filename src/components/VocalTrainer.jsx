@@ -80,22 +80,22 @@ function BreathCircle({ ex, running }) {
     <div className="flex flex-col items-center gap-4 py-4">
       <div className="relative w-48 h-48 grid place-items-center">
         <div
-          className="absolute w-48 h-48 rounded-full bg-[#0F5C4C]/15"
+          className="absolute w-48 h-48 rounded-full bg-[#1B4D3E]/15"
           style={{
             transform: `scale(${scale})`,
             transition: `transform ${dur}s ease-in-out`,
           }}
         />
         <div
-          className="absolute w-36 h-36 rounded-full bg-[#0F5C4C]/25"
+          className="absolute w-36 h-36 rounded-full bg-[#1B4D3E]/25"
           style={{
             transform: `scale(${scale})`,
             transition: `transform ${dur}s ease-in-out`,
           }}
         />
         <div className="relative text-center">
-          <div className="text-xl font-bold text-[#0F5C4C] dark:text-[#8FD6C0]">{label}</div>
-          {running && <div className="text-3xl font-bold text-[#0F5C4C]">{left}</div>}
+          <div className="text-xl font-bold text-[#1B4D3E] dark:text-[#8FD6C0]">{label}</div>
+          {running && <div className="text-3xl font-bold text-[#1B4D3E]">{left}</div>}
         </div>
       </div>
     </div>
@@ -124,10 +124,10 @@ function Timer({ seconds, running, onDone }) {
   const pct = ((seconds - left) / seconds) * 100;
   return (
     <div className="flex flex-col items-center gap-3 py-6">
-      <div className="text-6xl font-bold text-[#0F5C4C] dark:text-[#8FD6C0]">{Math.max(left, 0)}</div>
+      <div className="text-6xl font-bold text-[#1B4D3E] dark:text-[#8FD6C0]">{Math.max(left, 0)}</div>
       <div className="w-full max-w-xs h-2 bg-[#E4DCC3] rounded-full overflow-hidden">
         <div
-          className="h-full bg-[#0F5C4C] transition-all duration-1000 ease-linear"
+          className="h-full bg-[#1B4D3E] transition-all duration-1000 ease-linear"
           style={{ width: `${running ? pct : 0}%` }}
         />
       </div>
@@ -214,8 +214,8 @@ function Recorder() {
           onClick={state === "recording" ? stop : start}
           className={`px-5 py-2.5 rounded-xl font-bold text-sm ${
             state === "recording"
-              ? "bg-[#8A4E4E] text-[#F6F1E4] animate-pulse"
-              : "bg-[#0F5C4C] text-[#F6F1E4]"
+              ? "bg-[#8A4E4E] text-[#F5F0E8] animate-pulse"
+              : "bg-[#1B4D3E] text-[#F5F0E8]"
           }`}
         >
           {state === "recording" ? "إيقاف ■" : "سجّل 🎙️"}
@@ -230,7 +230,7 @@ function Recorder() {
           {peaks.map((p, i) => (
             <div
               key={i}
-              className="flex-1 bg-[#0F5C4C]/70 rounded-full"
+              className="flex-1 bg-[#1B4D3E]/70 rounded-full"
               style={{ height: `${Math.max(4, p * 100)}%` }}
             />
           ))}
@@ -260,7 +260,7 @@ export default function VocalTrainer() {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h2 className="text-xl font-bold text-[#0F5C4C] dark:text-[#E7C873]">تدريب الصوت</h2>
+        <h2 className="text-xl font-bold text-[#1B4D3E] dark:text-[#D4A853]">تدريب الصوت</h2>
         <p className="text-xs text-[#5B6B62] dark:text-[#A9BDB2] mt-1">
           تمارين تحضيرية للنَفَس والصوت — تساعد على المدّ الطويل والغنّة الواضحة
         </p>
@@ -276,7 +276,7 @@ export default function VocalTrainer() {
             }}
             className={`px-4 py-2 rounded-full text-sm font-semibold border transition-colors ${
               active === e.id
-                ? "bg-[#0F5C4C] border-[#0F5C4C] text-[#F6F1E4]"
+                ? "bg-[#1B4D3E] border-[#1B4D3E] text-[#F5F0E8]"
                 : "border-[#E4DCC3] dark:border-[#3A5148] text-[#5B6B62] dark:text-[#A9BDB2]"
             }`}
           >
@@ -285,8 +285,8 @@ export default function VocalTrainer() {
         ))}
       </div>
 
-      <div className="bg-[#FFFDF6] dark:bg-[#243830] border border-[#E4DCC3] dark:border-[#3A5148] rounded-3xl p-6">
-        <p className="text-center text-[#1E2A24] dark:text-[#F6F1E4] font-semibold mb-1">
+      <div className="bg-[#FFFFFF] dark:bg-[#243830] border border-[#E4DCC3] dark:border-[#3A5148] rounded-3xl p-6">
+        <p className="text-center text-[#1E2A24] dark:text-[#F5F0E8] font-semibold mb-1">
           {ex.prompt}
         </p>
         <p className="text-center text-xs text-[#8A7A4E] mb-2">💡 {ex.tip}</p>
@@ -301,7 +301,7 @@ export default function VocalTrainer() {
           <button
             onClick={() => setRunning((v) => !v)}
             className={`px-7 py-2.5 rounded-xl font-bold text-sm ${
-              running ? "bg-[#8A4E4E] text-[#F6F1E4]" : "bg-[#0F5C4C] text-[#F6F1E4]"
+              running ? "bg-[#8A4E4E] text-[#F5F0E8]" : "bg-[#1B4D3E] text-[#F5F0E8]"
             }`}
           >
             {running ? "إيقاف" : "ابدأ"}
@@ -312,7 +312,7 @@ export default function VocalTrainer() {
       </div>
 
       {doneCount > 0 && (
-        <p className="text-center text-sm text-[#0F5C4C] dark:text-[#8FD6C0]">
+        <p className="text-center text-sm text-[#1B4D3E] dark:text-[#8FD6C0]">
           خلّصت {doneCount} تمرين النهاردة — كمّل 👏
         </p>
       )}

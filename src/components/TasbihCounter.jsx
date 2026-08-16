@@ -47,7 +47,7 @@ export default function TasbihCounter({ toArabicDigits, onChange, onToast }) {
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center justify-between px-4 py-3"
       >
-        <span className="flex items-center gap-2 text-sm font-bold text-[#0F5C4C] dark:text-[#E7C873]">
+        <span className="flex items-center gap-2 text-sm font-bold text-[#1B4D3E] dark:text-[#D4A853]">
           📿 عدّاد التسبيح
           {total > 0 && (
             <span className="text-xs font-normal text-[#8A7A4E]">
@@ -63,13 +63,16 @@ export default function TasbihCounter({ toArabicDigits, onChange, onToast }) {
           {ADHKAR.map((a) => {
             const n = state.counts[a.id] || 0;
             const isFlash = flash?.id === a.id;
+            const target = a.target || 33;
+            const pct = Math.min((n / target) * 100, 100);
+            const reached = n >= target;
             return (
               <div key={a.id} className="relative">
                 <button
                   onClick={() => tap(a.id)}
                   className={`w-full rounded-2xl px-3 py-4 text-center border transition-transform active:scale-95 ${
                     isFlash ? "scale-95" : ""
-                  } bg-[#FFFDF6] dark:bg-[#1E2A24] border-[#E4DCC3] dark:border-[#3A5148]`}
+                  } bg-[#FFFFFF] dark:bg-[#1E2A24] border-[#E4DCC3] dark:border-[#3A5148]`}
                   style={{ borderColor: n > 0 ? a.color : undefined }}
                 >
                   <span
@@ -78,8 +81,20 @@ export default function TasbihCounter({ toArabicDigits, onChange, onToast }) {
                   >
                     {a.text}
                   </span>
-                  <span className="block text-2xl font-bold text-[#1E2A24] dark:text-[#F6F1E4]">
+                  <span className="block text-2xl font-bold text-[#1E2A24] dark:text-[#F5F0E8]">
                     {toArabicDigits(n)}
+                    {reached && <span className="text-sm mr-1">✓</span>}
+                  </span>
+
+                  {/* شريط التقدّم للهدف اليومي */}
+                  <span className="block h-1.5 rounded-full bg-[#E4DCC3] dark:bg-[#3A5148] mt-2 overflow-hidden">
+                    <span
+                      className="block h-full rounded-full transition-all duration-300"
+                      style={{ width: `${pct}%`, backgroundColor: a.color }}
+                    />
+                  </span>
+                  <span className="block text-[10px] text-[#8A7A4E] mt-1">
+                    {toArabicDigits(Math.min(n, target))}/{toArabicDigits(target)}
                   </span>
                 </button>
                 {n > 0 && (

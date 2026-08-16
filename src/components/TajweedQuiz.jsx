@@ -24,7 +24,7 @@ export default function TajweedQuiz({ toArabicDigits, onClose }) {
     return (
       <div className="flex flex-col items-center gap-5 text-center py-10">
         <div className="text-5xl">{pct >= 70 ? "🎉" : "📖"}</div>
-        <h3 className="text-2xl font-bold text-[#0F5C4C] dark:text-[#E7C873]">
+        <h3 className="text-2xl font-bold text-[#1B4D3E] dark:text-[#D4A853]">
           {toArabicDigits(score)} من {toArabicDigits(questions.length)}
         </h3>
         <p className="text-sm text-[#5B6B62] dark:text-[#A9BDB2] max-w-xs">
@@ -39,7 +39,7 @@ export default function TajweedQuiz({ toArabicDigits, onClose }) {
               setScore(0);
               setPicked(null);
             }}
-            className="bg-[#0F5C4C] text-[#F6F1E4] px-6 py-3 rounded-xl font-bold"
+            className="bg-[#1B4D3E] text-[#F5F0E8] px-6 py-3 rounded-xl font-bold"
           >
             إعادة
           </button>
@@ -76,12 +76,12 @@ export default function TajweedQuiz({ toArabicDigits, onClose }) {
       </div>
       <div className="h-1.5 bg-[#E4DCC3] rounded-full overflow-hidden">
         <div
-          className="h-full bg-[#0F5C4C] transition-all duration-300"
+          className="h-full bg-[#1B4D3E] transition-all duration-300"
           style={{ width: `${(idx / questions.length) * 100}%` }}
         />
       </div>
 
-      <p className="text-lg font-bold text-[#1E2A24] dark:text-[#F6F1E4] text-center py-3">
+      <p className="text-lg font-bold text-[#1E2A24] dark:text-[#F5F0E8] text-center py-3">
         {q.q}
       </p>
 
@@ -102,7 +102,7 @@ export default function TajweedQuiz({ toArabicDigits, onClose }) {
               disabled={picked !== null}
               className={`text-right px-5 py-3 rounded-xl border transition-colors ${
                 state === "right"
-                  ? "bg-[#0F5C4C] border-[#0F5C4C] text-[#F6F1E4]"
+                  ? "bg-[#1B4D3E] border-[#1B4D3E] text-[#F5F0E8]"
                   : state === "wrong"
                   ? "bg-[#FBEDED] border-[#8A4E4E] text-[#8A4E4E]"
                   : "bg-[#FBF8EF] dark:bg-[#243830] border-[#E4DCC3] dark:border-[#3A5148]"

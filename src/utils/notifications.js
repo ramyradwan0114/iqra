@@ -19,6 +19,7 @@
 //  "PWA من غير سيرفر".
 // ============================================================
 
+// كل تذكير له وجهة — الضغط عليه بيفتح المكان الصح مش الصفحة الرئيسية
 export const NOTIF_KINDS = {
   lesson: {
     id: "lesson",
@@ -26,6 +27,7 @@ export const NOTIF_KINDS = {
     desc: "تذكير يومي في الميعاد اللي تختاره",
     title: "وقت الدرس! 📖",
     body: "خمس دقايق بس تفرق — تعالى نكمّل.",
+    link: "/?go=lesson",
   },
   streak: {
     id: "streak",
@@ -33,6 +35,7 @@ export const NOTIF_KINDS = {
     desc: "لما تعدّي يوم من غير قراءة",
     title: "ما قرأتش من إمبارح 🔥",
     body: "سلسلتك في خطر — اقرأ آية واحدة وترجع تاني.",
+    link: "/?go=lesson",
   },
   surah: {
     id: "surah",
@@ -40,6 +43,35 @@ export const NOTIF_KINDS = {
     desc: "سورة مختلفة كل يوم",
     title: "سورة اليوم ﴿﴾",
     body: "افتح المصحف واقرأ سورة النهاردة.",
+    link: "/?go=quran",
+  },
+  kahf: {
+    id: "kahf",
+    label: "سورة الكهف — الجمعة",
+    desc: "كل جمعة الساعة ٦ صباحًا",
+    title: "🌅 اقرأ سورة الكهف",
+    body: "الجمعة النهاردة — من قرأ سورة الكهف نُوِّر له ما بين الجمعتين.",
+    link: "/?go=quran&surah=18",
+    weekly: 5, // الجمعة (0 = الأحد)
+    hour: 6,
+  },
+  morning: {
+    id: "morning",
+    label: "أذكار الصباح",
+    desc: "كل يوم الساعة ٦ صباحًا",
+    title: "📿 أذكار الصباح",
+    body: "ابدأ يومك بذكر الله.",
+    link: "/?go=home",
+    hour: 6,
+  },
+  evening: {
+    id: "evening",
+    label: "أذكار المساء",
+    desc: "كل يوم الساعة ٦ مساءً",
+    title: "📿 أذكار المساء",
+    body: "اختم يومك بذكر الله.",
+    link: "/?go=home",
+    hour: 18,
   },
 };
 
@@ -48,7 +80,10 @@ export const DEFAULT_NOTIF_SETTINGS = {
   lesson: true,
   streak: true,
   surah: false,
-  hour: 19, // ٧ مساءً
+  kahf: true,
+  morning: false,
+  evening: false,
+  hour: 19, // ٧ مساءً — لتذكير الدرس فقط
   minute: 0,
   lastShown: {}, // { lesson: "2026-08-10", ... }
 };
@@ -123,6 +158,17 @@ export function dueReminders(settings, ctx = {}) {
   }
 
   if (s.surah && shown.surah !== today) out.push("surah");
+
+  // التذكيرات المرتبطة بساعة ثابتة (وبيوم معيّن أحيانًا)
+  const now = new Date();
+  for (const id of ["kahf", "morning", "evening"]) {
+    if (!s[id] || shown[id] === today) continue;
+    const k = NOTIF_KINDS[id];
+    if (k.weekly != null && now.getDay() !== k.weekly) continue;
+    const due = new Date();
+    due.setHours(k.hour, 0, 0, 0);
+    if (now >= due) out.push(id);
+  }
 
   return out;
 }

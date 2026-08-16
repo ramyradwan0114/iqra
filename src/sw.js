@@ -74,7 +74,39 @@ registerRoute(
 // لو حبيت تنزيل أوفلاين لسورة معيّنة بعدين، الطريقة الصح هي تنزيل الملف
 // كاملًا بـ fetch مرة واحدة وحفظه بنفسك، مش تخزين ردود الـ Range.
 
-// 6) رسالة من التطبيق لو حبيت تحدّث يدويًا
+// 6) الضغط على الإشعار → يفتح المكان الصح جوّه التطبيق (deep link)
+//
+// المهم هنا: لو التطبيق مفتوح بالفعل، **مانفتحش تبويب جديد**. بندوّر على
+// نافذة شغّالة، نركّز عليها، ونبعتلها رسالة تنقلها للمكان المطلوب.
+// من غير الخطوة دي المستخدم بيلاقي نسخة تانية من التطبيق كل مرة يدوس
+// على إشعار — وده بيضيّع حالته وبيبوّظ الصوت الشغّال.
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || "/";
+  const target = new URL(url, self.location.origin);
+
+  event.waitUntil(
+    (async () => {
+      const clientsList = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      });
+
+      for (const client of clientsList) {
+        // أي نافذة من نفس الأصل تنفع — بنركّز عليها ونبعتلها الوجهة
+        if (new URL(client.url).origin === target.origin && "focus" in client) {
+          await client.focus();
+          client.postMessage({ type: "IQRA_NAVIGATE", url: target.pathname + target.search });
+          return;
+        }
+      }
+      // مفيش نافذة مفتوحة → نفتح واحدة
+      if (self.clients.openWindow) await self.clients.openWindow(target.href);
+    })()
+  );
+});
+
+// 7) رسالة من التطبيق لو حبيت تحدّث يدويًا
 self.addEventListener("message", (event) => {
   if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
 });

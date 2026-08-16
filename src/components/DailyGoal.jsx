@@ -62,14 +62,14 @@ export default function DailyGoal({ tasbih, lessonDoneToday, toArabicDigits, onT
   const y = state.yesterday;
 
   return (
-    <div className="bg-[#FFFDF6] dark:bg-[#243830] border border-[#E4DCC3] dark:border-[#3A5148] rounded-2xl p-4 mb-6">
+    <div className="bg-[#FFFFFF] dark:bg-[#243830] border border-[#E4DCC3] dark:border-[#3A5148] rounded-2xl p-4 mb-6">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-bold text-[#0F5C4C] dark:text-[#E7C873]">
+        <span className="text-sm font-bold text-[#1B4D3E] dark:text-[#D4A853]">
           {complete ? "🏆 " : "🎯 "}هدف اليوم
         </span>
         <span
           className={`text-xs font-bold ${
-            complete ? "text-[#0F5C4C] dark:text-[#8FD6C0]" : "text-[#8A7A4E]"
+            complete ? "text-[#1B4D3E] dark:text-[#8FD6C0]" : "text-[#8A7A4E]"
           }`}
         >
           {toArabicDigits(n)}/{toArabicDigits(GOALS.length)}
@@ -86,7 +86,7 @@ export default function DailyGoal({ tasbih, lessonDoneToday, toArabicDigits, onT
               key={g.id}
               className={`rounded-xl px-3 py-2.5 border transition-all ${
                 done
-                  ? "bg-[#0F5C4C]/10 border-[#0F5C4C]/30"
+                  ? "bg-[#1B4D3E]/10 border-[#1B4D3E]/30"
                   : "bg-[#FBF8EF] dark:bg-[#1E2A24] border-[#E4DCC3] dark:border-[#3A5148]"
               } ${justDone === g.id ? "scale-[1.02]" : ""}`}
             >
@@ -117,7 +117,7 @@ export default function DailyGoal({ tasbih, lessonDoneToday, toArabicDigits, onT
               {!done && g.target > 1 && (
                 <div className="h-1 bg-[#E4DCC3] dark:bg-[#3A5148] rounded-full mt-2 overflow-hidden">
                   <div
-                    className="h-full bg-[#0F5C4C] transition-all duration-300"
+                    className="h-full bg-[#1B4D3E] transition-all duration-300"
                     style={{ width: `${pct}%` }}
                   />
                 </div>
@@ -128,7 +128,7 @@ export default function DailyGoal({ tasbih, lessonDoneToday, toArabicDigits, onT
       </div>
 
       {complete && (
-        <p className="text-center text-xs font-bold text-[#0F5C4C] dark:text-[#8FD6C0] mt-3">
+        <p className="text-center text-xs font-bold text-[#1B4D3E] dark:text-[#8FD6C0] mt-3">
           أحسنت! أكملت هدفك اليوم 🏆
         </p>
       )}
@@ -140,7 +140,7 @@ export default function DailyGoal({ tasbih, lessonDoneToday, toArabicDigits, onT
           </span>
           <button
             onClick={onGoLesson}
-            className="text-[11px] font-bold text-[#0F5C4C] dark:text-[#8FD6C0] bg-[#0F5C4C]/10 rounded-lg px-3 py-1.5"
+            className="text-[11px] font-bold text-[#1B4D3E] dark:text-[#8FD6C0] bg-[#1B4D3E]/10 rounded-lg px-3 py-1.5"
           >
             أكمل اليوم ←
           </button>
