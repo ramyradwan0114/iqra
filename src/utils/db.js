@@ -32,6 +32,7 @@ export const STORES = {
   groups: "groups", // key: id     → { id, name, level, goal, members[], local }
   tasbih: "tasbih", // key: id     → { id, day, counts, totals }
   goals: "goals", // key: id     → { id, day, done, awarded, yesterday }
+  bookmarks: "bookmarks", // key: "2:255" → { id, surah, ayah, category, note, at }
 };
 
 let dbPromise = null;
@@ -115,6 +116,8 @@ function getDB() {
           db.createObjectStore(STORES.tasbih, { keyPath: "id" });
         if (!db.objectStoreNames.contains(STORES.goals))
           db.createObjectStore(STORES.goals, { keyPath: "id" });
+        if (!db.objectStoreNames.contains(STORES.bookmarks))
+          db.createObjectStore(STORES.bookmarks, { keyPath: "id" });
       },
     }).catch(() => {
       idbBroken = true;

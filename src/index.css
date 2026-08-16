@@ -120,6 +120,32 @@
   .iqra-page {
     padding-bottom: calc(var(--iqra-nav-h) + env(safe-area-inset-bottom, 0px) + 1rem);
   }
+
+  /* الوضع الأفقي: عمودين زي المصحف المفتوح.
+     column-fill: balance بيوزّع النص بالتساوي، و column-rule بيرسم
+     الفاصل في النص. بيتفعّل تلقائيًا لما الشاشة تبقى عريضة وقصيرة —
+     يعني تابلت أو موبايل مقلوب. */
+  .iqra-mushaf-spread {
+    column-count: 2;
+    column-gap: 2.5rem;
+    column-fill: balance;
+    column-rule: 1px solid #e4dcc3;
+  }
+  .dark .iqra-mushaf-spread {
+    column-rule-color: #3a5148;
+  }
+}
+
+/* الشاشات العريضة القصيرة = موبايل أفقي أو تابلت */
+@media (orientation: landscape) and (min-width: 700px) {
+  .iqra-landscape-only {
+    display: block;
+  }
+}
+@media not all and (orientation: landscape) and (min-width: 700px) {
+  .iqra-landscape-only {
+    display: none;
+  }
 }
 
 @layer utilities {

@@ -3,6 +3,7 @@ import { useLocation, usePrayerTimes } from "../hooks/usePrayerTimes.js";
 import { fmtTime, countdown, PRAYERS } from "../utils/prayerTimes.js";
 import { formatHijri, nextEvent } from "../utils/islamicCalendar.js";
 import { viewStreak } from "../utils/streak.js";
+import AyahOfTheDay from "./AyahOfTheDay.jsx";
 
 const greet = () => {
   const h = new Date().getHours();
@@ -100,6 +101,13 @@ export default function HomeScreen({
           </button>
         ))}
       </div>
+
+      {/* آية اليوم */}
+      <AyahOfTheDay
+        toArabicDigits={toArabicDigits}
+        compact
+        onOpenMushaf={(s, a) => onGo("quran", null, { surah: s, ayah: a })}
+      />
 
       {/* الصلاة الجاية */}
       <Card>

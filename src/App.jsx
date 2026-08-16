@@ -16,6 +16,8 @@ import QiblaCompass from "./components/QiblaCompass.jsx";
 import IslamicCalendar from "./components/IslamicCalendar.jsx";
 import Muazzin from "./components/Muazzin.jsx";
 import AITajweedCoach from "./components/AITajweedCoach.jsx";
+import AyahOfTheDay from "./components/AyahOfTheDay.jsx";
+import { bookmarksForSurah, cycleBookmark, catOf, CATEGORIES } from "./utils/bookmarks.js";
 import BottomNav from "./components/BottomNav.jsx";
 import HomeScreen from "./components/HomeScreen.jsx";
 import OnboardingFlow from "./components/OnboardingFlow.jsx";
@@ -586,6 +588,9 @@ const AyahLine = React.memo(function AyahLine({
   tafsirOpen,
   isCurrent,
   currentRef,
+  mark,
+  onMark,
+  onRepeat,
 }) {
   const { ayah, words, segments } = ayahData;
   const holdRef = useRef(null);
@@ -689,6 +694,35 @@ const AyahLine = React.memo(function AyahLine({
         aria-label={`تفسير الآية ${toArabicDigits(ayah)}`}
       >
         📖
+      </button>
+      {/* تكرار الآية */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onRepeat?.(ayah);
+        }}
+        className="align-middle mx-0.5 text-[0.5em] leading-none px-1.5 py-1 rounded-md border border-[#E4DCC3] dark:border-[#3A5148] text-[#5B6B62] dark:text-[#A9BDB2] hover:border-[#1B4D3E]"
+        title={`كرّر الآية ${toArabicDigits(ayah)}`}
+        aria-label={`كرّر الآية ${toArabicDigits(ayah)}`}
+      >
+        🔁
+      </button>
+      {/* علامة مرجعية ملوّنة */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onMark?.(ayah);
+        }}
+        className="align-middle mx-0.5 text-[0.5em] leading-none px-1.5 py-1 rounded-md border transition-colors"
+        style={
+          mark
+            ? { backgroundColor: catOf(mark).color, borderColor: catOf(mark).color, color: "#fff" }
+            : undefined
+        }
+        title={mark ? `علامة: ${catOf(mark).label}` : "أضف علامة"}
+        aria-label="علامة مرجعية"
+      >
+        {mark ? catOf(mark).icon : "🔖"}
       </button>{" "}
     </span>
   );
@@ -790,6 +824,48 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma, deepSur
   const [rulePopup, setRulePopup] = useState(null);
   const [reciteFor, setReciteFor] = useState(null); // { text, ayah }
   const [openTafsir, setOpenTafsir] = useState(null); // رقم الآية المفتوح تفسيرها
+  const [ayahRepeat, setAyahRepeat] = useState(1); // تكرار الآية ١-١٠
+  const [rate, setRate] = useState(1); // سرعة التلاوة
+  const [marks, setMarks] = useState({}); // { رقم الآية: فئة العلامة }
+  const [spread, setSpread] = useState(false); // صفحتين جنب بعض
+  const [showEn, setShowEn] = useState(false); // ترجمة إنجليزية تحت كل آية
+  const [enData, setEnData] = useState(null);
+  const [enState, setEnState] = useState("idle"); // idle | loading | ready | failed
+
+  // الوضع الأفقي على شاشة عريضة = المصحف المفتوح. بنكشفه تلقائيًا،
+  // والمستخدم يقدر يقفله. الفتح والقفل بيتحفظا لما يلفّ الجهاز.
+  const [canSpread, setCanSpread] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(orientation: landscape) and (min-width: 700px)");
+    const apply = () => {
+      setCanSpread(mq.matches);
+      setSpread(mq.matches);
+    };
+    apply();
+    mq.addEventListener?.("change", apply);
+    return () => mq.removeEventListener?.("change", apply);
+  }, []);
+  // الترجمة بتتجاب مرة واحدة للسورة وتتخزّن — بعد كده أوفلاين.
+  // بنجيبها بس لما المستخدم يفتح الترجمة، مش مع كل سورة، عشان
+  // مانستهلكش باقة حد مش محتاجها.
+  useEffect(() => {
+    setEnData(null);
+    setEnState("idle");
+  }, [surah]);
+  useEffect(() => {
+    if (!showEn || enData || enState === "loading") return;
+    let alive = true;
+    setEnState("loading");
+    loadAyahTranslations(surah).then((r) => {
+      if (!alive) return;
+      setEnData(r);
+      setEnState(r ? "ready" : "failed");
+    });
+    return () => {
+      alive = false;
+    };
+  }, [showEn, surah, enData, enState]);
+
   const [searchOpen, setSearchOpen] = useState(false);
   const [voiceSearch, setVoiceSearch] = useState(false);
   const [currentAyah, setCurrentAyah] = useState(null);
@@ -860,6 +936,7 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma, deepSur
       runRef.current = session;
       setPlaying(true);
       if (audio.src !== data.audioUrl) audio.src = data.audioUrl;
+      audio.playbackRate = rate; // سرعة التلاوة
       let left = times;
       const begin = () => {
         if (runRef.current !== session) return;
@@ -886,7 +963,43 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma, deepSur
       if (audio.readyState >= 1) begin();
       else audio.addEventListener("loadedmetadata", begin, { once: true });
     },
-    [data, stopAll]
+    [data, stopAll, rate]
+  );
+
+  // تكرار آية واحدة بالكامل — بيستخدم نفس محرّك التشغيل
+  const repeatAyah = useCallback(
+    (ayahNo) => {
+      const line = data?.ayat.find((a) => a.ayah === ayahNo);
+      if (!line?.segments.length) return;
+      const start = line.segments[0][1];
+      const end = line.segments[line.segments.length - 1][2];
+      setSelection(null);
+      setCurrentAyah(ayahNo);
+      playSpan(start, end, ayahRepeat, (ms) => {
+        const w = line.segments.find(([, s, e]) => ms >= s && ms < e);
+        setActiveWord(w ? `${ayahNo}:${w[0]}` : null);
+      });
+    },
+    [data, ayahRepeat, playSpan]
+  );
+
+  // العلامات المرجعية للسورة الحالية
+  useEffect(() => {
+    bookmarksForSurah(surah).then(setMarks);
+  }, [surah]);
+
+  const toggleMark = useCallback(
+    async (ayahNo) => {
+      const r = await cycleBookmark(surah, ayahNo);
+      setMarks((m) => {
+        const next = { ...m };
+        if (r) next[ayahNo] = r.category;
+        else delete next[ayahNo];
+        return next;
+      });
+      buzz(12);
+    },
+    [surah]
   );
   // بيبدأ التلاوة المستمرة من كلمة معيّنة لآخر السورة.
   // بنستخدمها في زر التشغيل (من الأول) وفي القفز (seek) للآية اللي المستخدم
@@ -1251,6 +1364,37 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma, deepSur
         >
           تحديد مقطع
         </button>
+
+        {/* تكرار الآية + السرعة */}
+        <span className="w-px h-6 bg-[#E4DCC3] dark:bg-[#3A5148] mx-1" />
+        <label className="flex items-center gap-1.5 text-xs text-[#8A7A4E]">
+          تكرار الآية
+          <select
+            value={ayahRepeat}
+            onChange={(e) => setAyahRepeat(Number(e.target.value))}
+            className="bg-white dark:bg-[#1E2A24] border border-[#E4DCC3] dark:border-[#3A5148] rounded-lg px-2 py-1 text-xs"
+          >
+            {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+              <option key={n} value={n}>
+                {toArabicDigits(n)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex items-center gap-1.5 text-xs text-[#8A7A4E]">
+          السرعة
+          <select
+            value={rate}
+            onChange={(e) => setRate(Number(e.target.value))}
+            className="bg-white dark:bg-[#1E2A24] border border-[#E4DCC3] dark:border-[#3A5148] rounded-lg px-2 py-1 text-xs"
+          >
+            {[0.5, 0.75, 1, 1.25, 1.5].map((r) => (
+              <option key={r} value={r}>
+                {r}×
+              </option>
+            ))}
+          </select>
+        </label>
         <button
           onClick={() => setTajweed((v) => !v)}
           className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
@@ -1262,6 +1406,30 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma, deepSur
         >
           تلوين التجويد
         </button>
+        <button
+          onClick={() => setShowEn((v) => !v)}
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+            showEn
+              ? "bg-[#3E6D9E] border-[#3E6D9E] text-[#F5F0E8]"
+              : "border-[#E4DCC3] dark:border-[#3A5148] text-[#5B6B62] dark:text-[#A9BDB2]"
+          }`}
+          title={`ترجمة الآيات — ${EN_NAME}`}
+        >
+          🌐 English
+        </button>
+        {canSpread && (
+          <button
+            onClick={() => setSpread((v) => !v)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+              spread
+                ? "bg-[#1B4D3E] border-[#1B4D3E] text-[#F5F0E8]"
+                : "border-[#E4DCC3] dark:border-[#3A5148] text-[#5B6B62] dark:text-[#A9BDB2]"
+            }`}
+            title="صفحتين جنب بعض زي المصحف المفتوح"
+          >
+            📖 صفحتين
+          </button>
+        )}
         <button
           onClick={() => {
             const a = data?.ayat?.[0];
@@ -1278,6 +1446,24 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma, deepSur
           📖 جنب كل آية = تفسيرها
         </span>
       </div>
+
+      {/* مفتاح ألوان العلامات — بيظهر لما يكون فيه علامات في السورة دي */}
+      {Object.keys(marks).length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 mb-5 text-[11px]">
+          <span className="text-[#8A7A4E]">علاماتك:</span>
+          {CATEGORIES.filter((c) => Object.values(marks).includes(c.id)).map((c) => (
+            <span
+              key={c.id}
+              className="flex items-center gap-1 px-2 py-1 rounded-lg text-white"
+              style={{ backgroundColor: c.color }}
+            >
+              {c.icon} {c.label} (
+              {toArabicDigits(Object.values(marks).filter((m) => m === c.id).length)})
+            </span>
+          ))}
+          <span className="text-[#8A7A4E]">— دوس 🔖 لتغيير الفئة</span>
+        </div>
+      )}
 
       {/* حجم الخط اتنقل لـ المزيد ← الإعدادات (مصدر تحكّم واحد) */}
 
@@ -1336,7 +1522,9 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma, deepSur
       ) : data ? (
         <div
           dir="rtl"
-          className="text-[#1E2A24] dark:text-[#F5F0E8] text-justify select-none"
+          className={`text-[#1E2A24] dark:text-[#F5F0E8] text-justify select-none ${
+            spread ? "iqra-mushaf-spread" : ""
+          }`}
           style={{
             fontFamily: QURAN_FONT,
             fontSize: `${settings?.fontSize ?? 2}rem`,
@@ -1360,7 +1548,20 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma, deepSur
                 tafsirOpen={openTafsir === a.ayah}
                 isCurrent={playing && currentAyah === a.ayah}
                 currentRef={currentAyahRef}
+                mark={marks[a.ayah]}
+                onMark={toggleMark}
+                onRepeat={repeatAyah}
               />
+              {showEn && enData?.[a.ayah] && (
+                <span
+                  dir="ltr"
+                  lang="en"
+                  className="block text-left text-[#5B6B62] dark:text-[#A9BDB2] border-r-2 border-[#3E6D9E]/40 pr-3 my-2"
+                  style={{ fontFamily: UI_FONT, fontSize: "0.9rem", lineHeight: 1.6 }}
+                >
+                  {enData[a.ayah]}
+                </span>
+              )}
               {openTafsir === a.ayah && (
                 <TafsirAccordion
                   surah={surah}
@@ -2582,9 +2783,10 @@ export default function App() {
               markLessonOpened();
               setLessonOpen(true);
             }}
-            onGo={(t, sub) => {
+            onGo={(t, sub, opts) => {
               setTab(t);
               if (sub) setSubMore(sub);
+              if (opts?.surah) setDeepSurah(opts.surah);
             }}
           />
         )}
