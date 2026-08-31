@@ -99,7 +99,13 @@ export default function NotificationSettings({ settings, onChange, toArabicDigit
 
               <button
                 onClick={() =>
-                  showNotification(NOTIF_KINDS.lesson.title, { body: "ده تذكير تجريبي ✅" })
+                  // لازم data.url — من غيرها الضغط على الإشعار مابيعملش
+                  // حاجة، والـ Service Worker بيروح على "/" ومحدش يلاحظ فرق.
+                  showNotification(NOTIF_KINDS.lesson.title, {
+                    body: "ده تذكير تجريبي ✅ — دوس عليه يوديك للدرس",
+                    tag: "iqra-test",
+                    data: { url: NOTIF_KINDS.lesson.link || "/?go=lesson" },
+                  })
                 }
                 className="text-xs text-[#1B4D3E] dark:text-[#8FD6C0] underline self-start"
               >

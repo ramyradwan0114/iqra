@@ -1,0 +1,95 @@
+rules_version = '2';
+
+// ============================================================
+//  قواعد أمان Firestore — تطبيق «اقرأ»
+// ------------------------------------------------------------
+//  ⚠️ اقرأ ده الأول:
+//
+//  التطبيق حاليًا **مافيهوش Firebase Authentication خالص**. مفيش
+//  signInAnonymously ولا أي تسجيل دخول. يعني كل الطلبات اللي بتوصل
+//  Firestore طلبات مجهولة تمامًا، ومفيش أي وسيلة تقنية تفرّق بين
+//  المعلّم صاحب البيانات وبين أي شخص على الإنترنت.
+//
+//  النتيجة اللي لازم تكون واضحة: **أي قاعدة تسمح للتطبيق يشتغل دلوقتي،
+//  هتسمح لأي حد تاني بنفس الشيء.** مفيش قاعدة ذكية تحلّ ده — الحل
+//  الوحيد هو إضافة Auth.
+//
+//  عشان كده الملف ده بيقفل كل حاجة (fail-closed). لما ترفعه:
+//    • وضع المعلّم والمجموعات هيرجعوا يشتغلوا **محليًا على الجهاز**
+//      (الكود متعامل مع الحالة دي أصلًا بـ try/catch و local: true)
+//    • بيانات الطلبة تبقى محميّة بدل ما تكون مكشوفة للكل
+//
+//  ولما نضيف Anonymous Auth، شيل التعليق عن القسم التاني تحت.
+// ============================================================
+
+// ------------------------------------------------------------
+//  📋 اللي تلصقه في Firebase Console (Rules ← Publish)
+//  محرّر Firebase مابيقبلش حروف عربية حتى جوّه التعليقات، فالصق
+//  السطور دي بس — من غير أي تعليق:
+//
+//     rules_version = '2';
+//
+//     service cloud.firestore {
+//       match /databases/{database}/documents {
+//         match /{document=**} {
+//           allow read, write: if false;
+//         }
+//       }
+//     }
+// ------------------------------------------------------------
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- المرحلة الحالية: إغلاق كامل ----------
+    // من غير Auth، ده الوضع الآمن الوحيد. التطبيق بيشتغل ١٠٠٪ محليًا.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ---------- بعد إضافة Anonymous Auth ----------
+    // امسح البلوك اللي فوق وشيل التعليق عن ده.
+    //
+    // الخطوات في الكود قبل ما تفعّلها:
+    //   ١. Firebase Console ← Authentication ← فعّل "Anonymous"
+    //   ٢. في src/utils/firebase.js: نادِ signInAnonymously(getAuth(app))
+    //      واستنى نتيجتها قبل أي عملية Firestore
+    //   ٣. خزّن uid جوّه كل مستند وقت الإنشاء (ownerUid)
+    //
+    // match /students/{studentId} {
+    //   // المعلّم اللي أنشأ الطالب هو الوحيد اللي يقراه أو يعدّله
+    //   allow read, update, delete: if request.auth != null
+    //     && resource.data.ownerUid == request.auth.uid;
+    //
+    //   allow create: if request.auth != null
+    //     && request.resource.data.ownerUid == request.auth.uid
+    //     // حدود على الحجم عشان محدش يستعمل قاعدة البيانات كمساحة تخزين
+    //     && request.resource.data.keys().size() <= 20
+    //     && request.resource.data.name is string
+    //     && request.resource.data.name.size() <= 60;
+    // }
+    //
+    // match /groups/{code} {
+    //   // كود المجموعة ٦ حروف — أي حد معاه الكود يقدر يقراها ويدخلها،
+    //   // ودي طبيعة الميزة نفسها. بس التعديل محكوم.
+    //   allow read: if request.auth != null;
+    //
+    //   allow create: if request.auth != null
+    //     && request.resource.data.ownerUid == request.auth.uid
+    //     && request.resource.data.name.size() <= 50
+    //     && request.resource.data.goal.size() <= 120
+    //     && request.resource.data.members.size() <= 50;
+    //
+    //   // الانضمام: مسموح تعدّل قائمة الأعضاء بس — مش اسم المجموعة
+    //   // ولا المالك — والعدد مايزيدش عن ٥٠.
+    //   allow update: if request.auth != null
+    //     && request.resource.data.diff(resource.data)
+    //          .affectedKeys().hasOnly(['members'])
+    //     && request.resource.data.members.size() <= 50;
+    //
+    //   // الحذف للمالك بس
+    //   allow delete: if request.auth != null
+    //     && resource.data.ownerUid == request.auth.uid;
+    // }
+  }
+}

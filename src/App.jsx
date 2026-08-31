@@ -17,7 +17,7 @@ import IslamicCalendar from "./components/IslamicCalendar.jsx";
 import Muazzin from "./components/Muazzin.jsx";
 import AITajweedCoach from "./components/AITajweedCoach.jsx";
 import AyahOfTheDay from "./components/AyahOfTheDay.jsx";
-import { bookmarksForSurah, cycleBookmark, catOf, CATEGORIES } from "./utils/bookmarks.js";
+import { bookmarksForSurah, toggleBookmark } from "./utils/bookmarks.js";
 import BottomNav from "./components/BottomNav.jsx";
 import HomeScreen from "./components/HomeScreen.jsx";
 import OnboardingFlow from "./components/OnboardingFlow.jsx";
@@ -32,6 +32,11 @@ import QuranSearch from "./components/QuranSearch.jsx";
 import { shareApp } from "./utils/share.js";
 import { makeTimingLoader, loadTranslations, loadTajweed } from "./hooks/useSurahTimings.js";
 import TafsirAccordion from "./components/TafsirAccordion.jsx";
+import MushafPage from "./components/MushafPage.jsx";
+import BookmarksList from "./components/BookmarksList.jsx";
+import AdhkarScreen from "./components/AdhkarScreen.jsx";
+import Tasmee3Screen from "./components/Tasmee3Screen.jsx";
+import { loadAyahTranslations, EN_NAME } from "./utils/ayahTranslation.js";
 import {
   DEFAULT_NOTIF_SETTINGS,
   NOTIF_KINDS,
@@ -360,9 +365,20 @@ const LESSONS = {
 // ============================================================
 //  التوقيت الحقيقي بكلمة-بكلمة
 // ============================================================
+// كل قارئ هنا **اتأكدت** إن الـ API بيرجّع له توقيت كلمة بكلمة
+// (segments) — مش كل القرّاء عندهم توقيت، واللي من غير توقيت
+// بيكسّر لمس الكلمة والتظليل أثناء التلاوة.
+//
+// الترتيب مقصود: التعليمي الأول لأنه أنسب حاجة لمتعلّم — الحصري
+// بيقرأ فيه ببطء شديد ويفصّل الحروف والمدود، وده أصلًا الغرض منه.
 const RECITERS = [
-  { id: "husary", name: "الشيخ الحصري", qdcId: 6 },
-  { id: "sudais", name: "الشيخ السديس", qdcId: 3 },
+  { id: "muallim", name: "الحصري — المعلّم", qdcId: 12, hint: "بطيء ومفصّل، للتعلّم" },
+  { id: "husary", name: "الشيخ الحصري", qdcId: 6, hint: "مرتّل" },
+  { id: "minshawi", name: "الشيخ المنشاوي", qdcId: 9, hint: "مرتّل، تجويد دقيق" },
+  { id: "basit", name: "عبد الباسط عبد الصمد", qdcId: 2, hint: "مرتّل" },
+  { id: "afasy", name: "مشاري العفاسي", qdcId: 7, hint: "مرتّل" },
+  { id: "shatri", name: "أبو بكر الشاطري", qdcId: 4, hint: "مرتّل" },
+  { id: "sudais", name: "الشيخ السديس", qdcId: 3, hint: "مرتّل" },
 ];
 const segmentsApi = (qdcId, surah) =>
   `https://api.qurancdn.com/api/qdc/audio/reciters/${qdcId}/audio_files?chapter=${surah}&segments=true`;
@@ -716,13 +732,13 @@ const AyahLine = React.memo(function AyahLine({
         className="align-middle mx-0.5 text-[0.5em] leading-none px-1.5 py-1 rounded-md border transition-colors"
         style={
           mark
-            ? { backgroundColor: catOf(mark).color, borderColor: catOf(mark).color, color: "#fff" }
+            ? { backgroundColor: "#D4A853", borderColor: "#D4A853", color: "#1E2A24" }
             : undefined
         }
-        title={mark ? `علامة: ${catOf(mark).label}` : "أضف علامة"}
+        title={mark ? "شيل العلامة" : "سجّل علامة"}
         aria-label="علامة مرجعية"
       >
-        {mark ? catOf(mark).icon : "🔖"}
+        {"🔖"}
       </button>{" "}
     </span>
   );
@@ -990,7 +1006,7 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma, deepSur
 
   const toggleMark = useCallback(
     async (ayahNo) => {
-      const r = await cycleBookmark(surah, ayahNo);
+      const r = await toggleBookmark(surah, ayahNo);
       setMarks((m) => {
         const next = { ...m };
         if (r) next[ayahNo] = r.category;
@@ -1447,23 +1463,6 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma, deepSur
         </span>
       </div>
 
-      {/* مفتاح ألوان العلامات — بيظهر لما يكون فيه علامات في السورة دي */}
-      {Object.keys(marks).length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 mb-5 text-[11px]">
-          <span className="text-[#8A7A4E]">علاماتك:</span>
-          {CATEGORIES.filter((c) => Object.values(marks).includes(c.id)).map((c) => (
-            <span
-              key={c.id}
-              className="flex items-center gap-1 px-2 py-1 rounded-lg text-white"
-              style={{ backgroundColor: c.color }}
-            >
-              {c.icon} {c.label} (
-              {toArabicDigits(Object.values(marks).filter((m) => m === c.id).length)})
-            </span>
-          ))}
-          <span className="text-[#8A7A4E]">— دوس 🔖 لتغيير الفئة</span>
-        </div>
-      )}
 
       {/* حجم الخط اتنقل لـ المزيد ← الإعدادات (مصدر تحكّم واحد) */}
 
@@ -2494,8 +2493,13 @@ export default function App() {
       const shown = await showNotification(SALAWAT_NOTIF.title, {
         body: SALAWAT_NOTIF.body,
         tag: "iqra-salawat",
+        data: { url: "/?go=more&sub=tasbih" },
       });
-      if (!shown) showToast("ﷺ " + SALAWAT_NOTIF.body); // بديل جوّه التطبيق
+      if (!shown)
+        showToast("ﷺ " + SALAWAT_NOTIF.body + " — دوس للعدّاد", () => {
+          setTab("more");
+          setSubMore("tasbih");
+        });
       const next = { ...live, lastShown: Date.now() };
       salawatRef.current = next;
       updateSettings({ salawat: next });
@@ -2540,15 +2544,21 @@ export default function App() {
       for (const kind of due) {
         const k = NOTIF_KINDS[kind];
         let body = k.body;
+        let url = k.link || "/";
         if (kind === "surah") {
           const sId = surahOfTheDay(dayIndex());
           const s = SURAHS.find((x) => x.id === sId);
-          if (s) body = `سورة ${s.name} — ${toArabicDigits(s.ayat)} آية. افتحها واقرأها.`;
+          if (s) {
+            body = `سورة ${s.name} — ${toArabicDigits(s.ayat)} آية. افتحها واقرأها.`;
+            // الرابط الثابت "/?go=quran" كان بيفتح تبويب المصحف على آخر
+            // سورة كان المستخدم فيها — مش السورة اللي الإشعار بيتكلّم عنها.
+            url = `/?go=quran&surah=${s.id}`;
+          }
         }
         const ok = await showNotification(k.title, {
           body,
           tag: `iqra-${kind}-${today}`,
-          data: { url: k.link || "/" }, // الوجهة عند الضغط
+          data: { url }, // الوجهة عند الضغط
         });
         if (ok) {
           shown[kind] = today;
@@ -2633,9 +2643,12 @@ export default function App() {
     }
   });
 
-  const showToast = useCallback((msg) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 2200);
+  // التوست ممكن يبقى ليه فعل. تنبيه الصلاة على النبي مثلًا المفروض
+  // يوديك للعدّاد — قبل كده كان مجرد نص بـ pointer-events-none،
+  // يعني المستخدم بيدوس عليه ومايحصلش حاجة.
+  const showToast = useCallback((msg, onTap = null) => {
+    setToast(onTap ? { msg, onTap } : { msg });
+    setTimeout(() => setToast(null), onTap ? 6000 : 2200);
   }, []);
   const [lessonOpen, setLessonOpen] = useState(false);
   const [editingName, setEditingName] = useState(false);
@@ -2670,7 +2683,10 @@ export default function App() {
 
   return (
     <div
-      className="min-h-screen bg-[#F5F0E8] text-[#1E2A24] dark:bg-[#1E2A24] dark:text-[#F5F0E8] transition-colors"
+      // 100dvh بيتابع اختفاء وظهور شريط عنوان المتصفّح على الموبايل،
+      // بعكس 100vh اللي بيفضل ثابت على أطول قيمة ويسبّب قصّ من تحت.
+      // min-h-screen سايبينها fallback للمتصفّحات القديمة.
+      className="min-h-screen min-h-[100dvh] bg-[#F5F0E8] text-[#1E2A24] dark:bg-[#1E2A24] dark:text-[#F5F0E8] transition-colors"
       dir="rtl"
       style={{ fontFamily: UI_FONT }}
     >
@@ -2733,7 +2749,14 @@ export default function App() {
           {/* التنقّل اتنقل للشريط السفلي — الهيدر بقى للهوية والسلسلة بس */}
         </div>
       </header>
-      <main className="max-w-3xl mx-auto px-5 py-6 iqra-page">
+      {/*
+        pt-6 مش py-6: كلاسات Tailwind الاستخدامية (utilities) بتتحطّ في
+        الـ CSS **بعد** كلاسات المكوّنات (components)، والاتنين نفس قوة
+        التخصيص — فـ py-6 كان بيدوس على padding-bottom بتاع .iqra-page
+        ويرجّعه ١.٥rem بدل ١٠٤px+. النتيجة إن آخر سطر في أي صفحة كان
+        بيختفي تحت شريط التنقّل. الحشوة السفلية مصدرها .iqra-page بس.
+      */}
+      <main className="max-w-3xl mx-auto px-5 pt-6 iqra-page">
         {/* تبويبات فرعية للمجموعات المركّبة */}
         {tab === "more" && (
           <div className="flex flex-wrap gap-2 mb-7">
@@ -2744,6 +2767,9 @@ export default function App() {
               ["coach", "مدرّب التلاوة", "🎙️"],
               ["vocal", "تدريب الصوت", "🫁"],
               ["confidence", "اقرأ بثقة", "🪞"],
+              ["adhkar", "الأذكار", "📿"],
+              ["bookmarks", "علاماتي", "🔖"],
+              ["tasmee3", "المسمّع", "🎤"],
               ["hifz", "الحفظ", "🧠"],
               ["tajweed", "التجويد", "◌ّ"],
               ["daily", "المسابقة", "🏅"],
@@ -2883,14 +2909,53 @@ export default function App() {
           </>
         )}
         {tab === "quran" && (
-          <MushafDemo
-            settings={settings}
-            updateSettings={updateSettings}
-            pushRecentSurah={pushRecentSurah}
-            khatma={khatma}
-            deepSurah={deepSurah}
-            onDeepSurahDone={() => setDeepSurah(null)}
-          />
+          <>
+            {/*
+              عرضان للمصحف، والاختيار محفوظ:
+              • «تلاوة» = العرض الأصلي — لمس الكلمة بيقفز لمكانها في
+                التلاوة. ده اللي المتعلّم محتاجه.
+              • «مصحف المدينة» = صفحات وأسطر مطابقة للمصحف المطبوع.
+                ده اللي القارئ المتمكّن متعوّد عليه.
+              منطق التشغيل في MushafDemo ما اتغيّرش خالص.
+            */}
+            <div className="flex gap-2 mb-5">
+              {[
+                ["recite", "🎧 تلاوة", "لمس الكلمة يقفز لمكانها في الصوت"],
+                ["page", "📖 مصحف المدينة", "صفحات وأسطر زي المصحف المطبوع"],
+              ].map(([id, label, hint]) => (
+                <button
+                  key={id}
+                  onClick={() => updateSettings({ mushafView: id })}
+                  title={hint}
+                  className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors ${
+                    (settings?.mushafView || "page") === id
+                      ? "bg-[#1B4D3E] border-[#1B4D3E] text-[#F5F0E8]"
+                      : "border-[#E4DCC3] dark:border-[#3A5148] text-[#5B6B62] dark:text-[#A9BDB2]"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {(settings?.mushafView || "page") === "page" ? (
+              <MushafPage
+                page={settings?.lastPage || 1}
+                onPageChange={(p) => updateSettings({ lastPage: p })}
+                toArabicDigits={toArabicDigits}
+                fontSize={settings?.fontSize ?? 1.75}
+              />
+            ) : (
+              <MushafDemo
+                settings={settings}
+                updateSettings={updateSettings}
+                pushRecentSurah={pushRecentSurah}
+                khatma={khatma}
+                deepSurah={deepSurah}
+                onDeepSurahDone={() => setDeepSurah(null)}
+              />
+            )}
+          </>
         )}
 
         {tab === "more" && subMore === "prayer" && (
@@ -2925,6 +2990,24 @@ export default function App() {
         {tab === "more" && subMore === "confidence" && (
           <ConfidenceMode toArabicDigits={toArabicDigits} />
         )}
+        {tab === "more" && subMore === "adhkar" && (
+          <AdhkarScreen toArabicDigits={toArabicDigits} />
+        )}
+
+        {tab === "more" && subMore === "bookmarks" && (
+          <BookmarksList
+            toArabicDigits={toArabicDigits}
+            onOpen={(page) => {
+              updateSettings({ mushafView: "page", lastPage: page });
+              setTab("quran");
+            }}
+          />
+        )}
+
+        {tab === "more" && subMore === "tasmee3" && (
+          <Tasmee3Screen toArabicDigits={toArabicDigits} surahs={SURAHS} />
+        )}
+
         {tab === "more" && subMore === "hifz" && <HifzMode toArabicDigits={toArabicDigits} />}
 
         {tab === "more" && subMore === "tajweed" && (
@@ -2991,10 +3074,26 @@ export default function App() {
       )}
 
       {toast && (
-        <div className="fixed bottom-24 inset-x-0 flex justify-center z-[75] px-4 pointer-events-none">
-          <div className="bg-[#1E2A24] text-[#F5F0E8] rounded-2xl px-5 py-3 shadow-xl text-sm font-semibold">
-            {toast}
-          </div>
+        <div
+          className={`fixed bottom-24 inset-x-0 flex justify-center z-[75] px-4 ${
+            toast.onTap ? "" : "pointer-events-none"
+          }`}
+        >
+          {toast.onTap ? (
+            <button
+              onClick={() => {
+                toast.onTap();
+                setToast(null);
+              }}
+              className="bg-[#1E2A24] text-[#F5F0E8] rounded-2xl px-5 py-3 shadow-xl text-sm font-semibold ring-2 ring-[#D4A853]"
+            >
+              {toast.msg}
+            </button>
+          ) : (
+            <div className="bg-[#1E2A24] text-[#F5F0E8] rounded-2xl px-5 py-3 shadow-xl text-sm font-semibold">
+              {toast.msg}
+            </div>
+          )}
         </div>
       )}
 

@@ -61,7 +61,7 @@ export const NOTIF_KINDS = {
     desc: "كل يوم الساعة ٦ صباحًا",
     title: "📿 أذكار الصباح",
     body: "ابدأ يومك بذكر الله.",
-    link: "/?go=home",
+    link: "/?go=more&sub=adhkar",
     hour: 6,
   },
   evening: {
@@ -70,7 +70,7 @@ export const NOTIF_KINDS = {
     desc: "كل يوم الساعة ٦ مساءً",
     title: "📿 أذكار المساء",
     body: "اختم يومك بذكر الله.",
-    link: "/?go=home",
+    link: "/?go=more&sub=adhkar",
     hour: 18,
   },
 };
@@ -115,8 +115,8 @@ export async function showNotification(title, options = {}) {
       const reg = await navigator.serviceWorker.getRegistration();
       if (reg?.showNotification) {
         await reg.showNotification(title, {
-          icon: "/icon-192.svg",
-          badge: "/icon-192.svg",
+          icon: "/icon-192.png",
+          badge: "/icon-192.png",
           dir: "rtl",
           lang: "ar",
           ...options,
@@ -124,7 +124,7 @@ export async function showNotification(title, options = {}) {
         return true;
       }
     }
-    new Notification(title, { icon: "/icon-192.svg", dir: "rtl", lang: "ar", ...options });
+    new Notification(title, { icon: "/icon-192.png", dir: "rtl", lang: "ar", ...options });
     return true;
   } catch {
     return false;

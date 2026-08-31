@@ -54,51 +54,72 @@ async function firestore() {
   }
 }
 
+// كل استدعاء للسحابة لازم يفشل بهدوء. مع قواعد الأمان المقفولة
+// (firestore.rules) Firestore بيرمي permission-denied، ومن غير المصيدة
+// دي وضع المعلّم كان هيقع بشاشة بيضا بدل ما يرجع للتخزين المحلي.
+async function safely(label, fn, fallback = null) {
+  try {
+    return await fn();
+  } catch (e) {
+    console.warn(`[iqra] ${label} فشل — بنكمّل محليًا:`, e?.code || e?.message);
+    return fallback;
+  }
+}
+
 export async function saveStudent(student) {
   const f = await firestore();
   if (!f) return null;
   const { db, fns } = f;
-  const ref = fns.doc(db, COLLECTION, student.id);
-  await fns.setDoc(
-    ref,
-    { ...student, lastActive: Date.now() },
-    { merge: true }
-  );
-  return student;
+  return safely("حفظ الطالب", async () => {
+    await fns.setDoc(
+      fns.doc(db, COLLECTION, student.id),
+      { ...student, lastActive: Date.now() },
+      { merge: true }
+    );
+    return student;
+  });
 }
 
 export async function getStudent(id) {
   const f = await firestore();
   if (!f) return null;
   const { db, fns } = f;
-  const snap = await fns.getDoc(fns.doc(db, COLLECTION, id));
-  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+  return safely("قراءة الطالب", async () => {
+    const snap = await fns.getDoc(fns.doc(db, COLLECTION, id));
+    return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+  });
 }
 
 export async function getAllStudents() {
   const f = await firestore();
   if (!f) return null;
   const { db, fns } = f;
-  const snap = await fns.getDocs(fns.collection(db, COLLECTION));
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  return safely("قراءة الطلبة", async () => {
+    const snap = await fns.getDocs(fns.collection(db, COLLECTION));
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  });
 }
 
 export async function deleteStudent(id) {
   const f = await firestore();
   if (!f) return false;
   const { db, fns } = f;
-  await fns.deleteDoc(fns.doc(db, COLLECTION, id));
-  return true;
+  return safely("حذف الطالب", async () => {
+    await fns.deleteDoc(fns.doc(db, COLLECTION, id));
+    return true;
+  }, false);
 }
 
 export async function updateProgress(id, progress, extra = {}) {
   const f = await firestore();
   if (!f) return false;
   const { db, fns } = f;
-  await fns.setDoc(
-    fns.doc(db, COLLECTION, id),
-    { progress, lastActive: Date.now(), ...extra },
-    { merge: true }
-  );
-  return true;
+  return safely("تحديث التقدّم", async () => {
+    await fns.setDoc(
+      fns.doc(db, COLLECTION, id),
+      { progress, lastActive: Date.now(), ...extra },
+      { merge: true }
+    );
+    return true;
+  }, false);
 }

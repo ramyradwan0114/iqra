@@ -1,9 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useHifz } from "../hooks/useQuranJournal.js";
 import { HIFZ_STEPS } from "../utils/db.js";
 import { SHORT_SURAHS } from "../data/shortSurahs.js";
+import { loadSurahText } from "../utils/surahText.js";
+import { SURAH_LIST, SURAH_NAMES } from "../data/surahList.js";
 
 const QURAN_FONT = "'Amiri Quran', 'Amiri', 'Traditional Arabic', serif";
+// اختصارات لأشهر السور القصيرة — مش حصر. القائمة تحتها فيها
+// المصحف كله، ونص أي سورة بيتجاب أول مرة ويتخزّن للأوفلاين.
 const PICKS = [112, 113, 114, 105, 106, 107];
 
 const fmtDue = (ts) => {
@@ -16,8 +20,8 @@ const fmtDue = (ts) => {
 // اختبار الحفظ: بنخفي الآيات ونطلب يكمّل، وبعدين يكشف ويحكم على نفسه.
 // ده تقييم ذاتي عن قصد — مفيش تعرّف صوتي موثوق للتلاوة، والحكم الآلي
 // الغلط هيحبط الحافظ.
-function HifzTest({ item, onDone, onCancel }) {
-  const s = SHORT_SURAHS[item.surah];
+function HifzTest({ item, onDone, onCancel, surahText }) {
+  const s = surahText || SHORT_SURAHS[item.surah];
   const [revealed, setRevealed] = useState(false);
   const ayat = (s?.ayat || []).slice(item.from - 1, item.to);
 
@@ -83,8 +87,35 @@ export default function HifzMode({ toArabicDigits }) {
   const [from, setFrom] = useState(1);
   const [to, setTo] = useState(1);
   const [testing, setTesting] = useState(null);
+  const [text, setText] = useState(SHORT_SURAHS[112] || null);
+  const [loading, setLoading] = useState(false);
+  const [testText, setTestText] = useState(null);
 
-  const max = SHORT_SURAHS[surah]?.ayat.length || 1;
+  // نص السورة المختارة — مدمج أو من الشبكة مرة واحدة
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    loadSurahText(surah, SURAH_NAMES[surah]).then((d) => {
+      if (!alive) return;
+      setText(d);
+      setLoading(false);
+      setFrom(1);
+      setTo(1);
+    });
+    return () => { alive = false; };
+  }, [surah]);
+
+  // نص السورة اللي بنختبر عليها (ممكن تكون غير المختارة)
+  useEffect(() => {
+    if (!testing) { setTestText(null); return; }
+    let alive = true;
+    loadSurahText(testing.surah, SURAH_NAMES[testing.surah]).then((d) => {
+      if (alive) setTestText(d);
+    });
+    return () => { alive = false; };
+  }, [testing]);
+
+  const max = text?.ayat?.length || 1;
 
   return (
     <div className="flex flex-col gap-5">
@@ -98,6 +129,7 @@ export default function HifzMode({ toArabicDigits }) {
       {testing ? (
         <HifzTest
           item={testing}
+          surahText={testText}
           onCancel={() => setTesting(null)}
           onDone={(passed) => {
             review(testing.id, passed);
@@ -126,10 +158,34 @@ export default function HifzMode({ toArabicDigits }) {
                   }`}
                   style={{ fontFamily: QURAN_FONT }}
                 >
-                  {SHORT_SURAHS[id].name}
+                  {SURAH_NAMES[id] || SHORT_SURAHS[id]?.name}
                 </button>
               ))}
             </div>
+            {/* المصحف كله — الأزرار فوق اختصارات بس */}
+            <label className="flex items-center gap-2 text-sm">
+              <span className="shrink-0">أو اختار سورة</span>
+              <select
+                value={surah}
+                onChange={(e) => setSurah(Number(e.target.value))}
+                className="flex-1 bg-[#FFFFFF] dark:bg-[#1E2A24] border border-[#E4DCC3] dark:border-[#3A5148] rounded-xl px-3 py-2 text-sm"
+              >
+                {SURAH_LIST.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.id} · {s.name} ({s.ayat} آية)
+                  </option>
+                ))}
+              </select>
+            </label>
+            {loading && (
+              <p className="text-[11px] text-[#8A7A4E]">جاري تحميل نص السورة…</p>
+            )}
+            {!loading && !text && (
+              <p className="text-[11px] text-[#8A4E4E] bg-[#FBEDED] rounded-xl px-3 py-2">
+                تعذّر تحميل نص السورة — محتاج اتصال أول مرة.
+              </p>
+            )}
+
             <div className="flex flex-wrap items-center gap-3 text-sm">
               <label className="flex items-center gap-2">
                 من آية
@@ -202,7 +258,7 @@ export default function HifzMode({ toArabicDigits }) {
                         className="font-bold text-[#1E2A24] dark:text-[#F5F0E8]"
                         style={{ fontFamily: QURAN_FONT }}
                       >
-                        {SHORT_SURAHS[it.surah]?.name}
+                        {SURAH_NAMES[it.surah] || SHORT_SURAHS[it.surah]?.name}
                       </div>
                       <div className="text-xs text-[#5B6B62] dark:text-[#A9BDB2] mt-0.5">
                         آية {toArabicDigits(it.from)} — {toArabicDigits(it.to)} ·{" "}

@@ -17,7 +17,13 @@ export default defineConfig({
       srcDir: "src",
       filename: "sw.js",
       injectRegister: "auto",
-      includeAssets: ["icon-192.svg", "icon-512.svg", "favicon.svg"],
+      includeAssets: [
+        "icon-192.png",
+        "icon-512.png",
+        "icon-maskable-512.png",
+        "apple-touch-icon.png",
+        "favicon.svg",
+      ],
 
       manifest: {
         name: "اقرأ",
@@ -25,29 +31,27 @@ export default defineConfig({
         description: "تعليم القراءة والكتابة العربية والمصحف التفاعلي",
         lang: "ar",
         dir: "rtl",
-        theme_color: "#0F5C4C",
-        background_color: "#F6F1E4",
+        // لازم يطابقوا <meta name="theme-color"> و --iqra-bg في index.css،
+        // وإلا شاشة البداية بتومض بلون مختلف عن التطبيق.
+        theme_color: "#1B4D3E",
+        background_color: "#F5F0E8",
         display: "standalone",
-        orientation: "portrait",
+        // "portrait" كان بيقفل الوضع الأفقي تمامًا على النسخة المثبَّتة —
+        // يعني ميزة الصفحتين في المصحف ماكانتش تشتغل أصلًا لأي حد مثبّت
+        // التطبيق. "any" بيسيب الجهاز يقرّر.
+        orientation: "any",
         start_url: "/",
         scope: "/",
+        // PNG مش SVG: متجر جوجل بلاي بيطلب PNG، وأيقونة الـ maskable لازم
+        // تبقى نقطية عشان أندرويد يقصّها صح. والأيقونة القديمة كانت نص
+        // عربي داخل SVG — أي جهاز مافيهوش خط Amiri كان هيرسمها غلط.
         icons: [
+          { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+          { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
           {
-            src: "/icon-192.svg",
-            sizes: "192x192",
-            type: "image/svg+xml",
-            purpose: "any",
-          },
-          {
-            src: "/icon-512.svg",
+            src: "/icon-maskable-512.png",
             sizes: "512x512",
-            type: "image/svg+xml",
-            purpose: "any",
-          },
-          {
-            src: "/icon-512.svg",
-            sizes: "512x512",
-            type: "image/svg+xml",
+            type: "image/png",
             purpose: "maskable",
           },
         ],

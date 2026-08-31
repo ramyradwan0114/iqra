@@ -45,7 +45,18 @@ export async function removeBookmark(surah, ayah) {
 }
 
 // دورة الفئات: بدون → ختمة → مراجعة → تعليم → محفوظة → بدون
-export async function cycleBookmark(surah, ayah) {
+// forced: لو المستخدم اختار فئة بعينها من شريط الأدوات، بندّيهاله على
+// طول بدل ما يفضل يدوس لحد ما يوصلها. ولو دوس على نفس الفئة تاني
+// بنشيل العلامة — فالزر بيشتغل تبديل.
+export async function cycleBookmark(surah, ayah, forced = null) {
+  if (forced) {
+    const cur = await getBookmark(surah, ayah);
+    if (cur?.category === forced) {
+      await removeBookmark(surah, ayah);
+      return null;
+    }
+    return addBookmark(surah, ayah, forced, cur?.note);
+  }
   const cur = await getBookmark(surah, ayah);
   if (!cur) return addBookmark(surah, ayah, CATEGORIES[0].id);
   const i = CATEGORIES.findIndex((c) => c.id === cur.category);
@@ -62,4 +73,37 @@ export async function bookmarksForSurah(surah) {
   const map = {};
   for (const b of all) if (b.surah === Number(surah)) map[b.ayah] = b.category;
   return map;
+}
+
+// ------------------------------------------------------------
+//  علامة واحدة بسيطة (النموذج الحالي)
+// ------------------------------------------------------------
+//  الفئات الأربعة (ختمة/مراجعة/تعليم/محفوظة) اتشالت من الواجهة:
+//  المستخدمين — وفيهم شيخ متمرّس — ماكانوش بيلاقوا الزر أصلًا، ولما
+//  لقوه كانت ٤ فئات قرار زيادة على حاجة المفروض تكون ضغطة واحدة.
+//  الحقول القديمة سايبينها في قاعدة البيانات فالعلامات المحفوظة
+//  قبل كده مابتضيعش.
+
+// بيحطّ العلامة أو يشيلها. بيرجّع الصف الجديد أو null لو اتشالت.
+export async function toggleBookmark(surah, ayah, extra = {}) {
+  const cur = await getBookmark(surah, ayah);
+  if (cur) {
+    await removeBookmark(surah, ayah);
+    return null;
+  }
+  const row = {
+    id: key(surah, ayah),
+    surah: Number(surah),
+    ayah: Number(ayah),
+    category: "khatma", // للتوافق مع الصفوف القديمة
+    note: "",
+    at: Date.now(),
+    ...extra, // page مثلًا — عشان نقدر نفتحها في المصحف على طول
+  };
+  await idbSet(STORES.bookmarks, row);
+  return row;
+}
+
+export async function isBookmarked(surah, ayah) {
+  return !!(await getBookmark(surah, ayah));
 }
