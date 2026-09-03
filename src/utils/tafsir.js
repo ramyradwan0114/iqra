@@ -18,24 +18,56 @@
 // ============================================================
 import { getCachedTafsir, cacheTafsir } from "./db.js";
 
-export const TAFSIR_ID = 16;
-export const TAFSIR_NAME = "التفسير الميسر";
-export const TAFSIR_SOURCE = "مجمع الملك فهد — عبر Quran.com";
+// ------------------------------------------------------------
+//  التفاسير المتاحة
+// ------------------------------------------------------------
+//  الأرقام دي من /resources/tafsirs في الـ API، واتأكدت إن الميسر
+//  والسعدي بيرجّعوا نفس شكل الرد بالظبط قبل ما أضيفهم — نفس المسار
+//  ونفس الحقل tafsir.text.
+//
+//  الترتيب مقصود: من الأقصر والأبسط للأطول. ده تطبيق تعليمي،
+//  والافتراضي لازم يكون اللي طفل أو مبتدئ يقدر يقراه.
+//
+//  ⚠️ الطبري والقرطبي طويلين جدًا — الآية الواحدة ممكن تطلع صفحات
+//  على الموبايل. سايبينهم كخيار لمن يريد، مع تنبيه في الواجهة،
+//  والكشف التدريجي (atLevel) بيتكفّل بالباقي.
+export const TAFSIRS = [
+  { id: 16, name: "التفسير الميسر", hint: "مبسّط — للمبتدئ والطفل", source: "مجمع الملك فهد" },
+  { id: 91, name: "تفسير السعدي", hint: "واضح ومختصر", source: "عبد الرحمن السعدي" },
+  { id: 14, name: "تفسير ابن كثير", hint: "بالأثر والروايات", source: "ابن كثير" },
+  { id: 94, name: "تفسير البغوي", hint: "متوسط الطول", source: "البغوي" },
+  { id: 93, name: "التفسير الوسيط", hint: "متوسط، بلغة معاصرة", source: "محمد سيد طنطاوي" },
+  { id: 15, name: "تفسير الطبري", hint: "مطوّل — بالمأثور", source: "ابن جرير الطبري", long: true },
+  { id: 90, name: "تفسير القرطبي", hint: "مطوّل — أحكام فقهية", source: "القرطبي", long: true },
+];
 
-const endpoint = (surah, ayah) =>
-  `https://api.qurancdn.com/api/qdc/tafsirs/${TAFSIR_ID}/by_ayah/${surah}:${ayah}`;
+export const DEFAULT_TAFSIR_ID = 16;
+
+export const tafsirById = (id) =>
+  TAFSIRS.find((t) => t.id === Number(id)) || TAFSIRS[0];
+
+// للتوافق مع الكود القديم اللي بيستورد الاسم مباشرة
+export const TAFSIR_ID = DEFAULT_TAFSIR_ID;
+export const TAFSIR_NAME = TAFSIRS[0].name;
+export const TAFSIR_SOURCE = "عبر Quran.com";
+
+const endpoint = (id, surah, ayah) =>
+  `https://api.qurancdn.com/api/qdc/tafsirs/${id}/by_ayah/${surah}:${ayah}`;
 
 const inflight = new Map();
 
-export async function loadAyahTafsir(surah, ayah) {
-  const key = `${TAFSIR_ID}:${surah}:${ayah}`;
+export async function loadAyahTafsir(surah, ayah, tafsirId = DEFAULT_TAFSIR_ID) {
+  const id = tafsirById(tafsirId).id;
+  // المفتاح فيه رقم التفسير، فكل تفسير له كاش مستقل ومابيدوسش
+  // على التاني — ده كان شغّال صح من الأول بالصدفة لأن الرقم ثابت.
+  const key = `${id}:${surah}:${ayah}`;
   const cached = await getCachedTafsir(key);
   if (cached) return { text: cached, fromCache: true };
   if (inflight.has(key)) return inflight.get(key);
 
   const job = (async () => {
     try {
-      const res = await fetch(endpoint(surah, ayah));
+      const res = await fetch(endpoint(id, surah, ayah));
       if (!res.ok) throw new Error("http " + res.status);
       const json = await res.json();
       const text = (json?.tafsir?.text || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();

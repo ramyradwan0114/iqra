@@ -4,26 +4,45 @@ import {
   atLevel,
   nextLevel,
   LEVELS,
-  TAFSIR_NAME,
-  TAFSIR_SOURCE,
+  TAFSIRS,
+  DEFAULT_TAFSIR_ID,
+  tafsirById,
 } from "../utils/tafsir.js";
+import { getSettings, saveSettings } from "../utils/db.js";
 
 export default function TafsirAccordion({ surah, ayah, toArabicDigits, onClose }) {
   const [state, setState] = useState({ loading: true, text: null, error: null, cached: false });
   const [level, setLevel] = useState("short");
+  // اختيار التفسير بيتحفظ، فالمستخدم مايختارش من أول وجديد كل آية
+  const [tafsirId, setTafsirId] = useState(DEFAULT_TAFSIR_ID);
+  const [picker, setPicker] = useState(false);
+
+  useEffect(() => {
+    getSettings().then((v) => {
+      if (v?.tafsirId) setTafsirId(Number(v.tafsirId));
+    });
+  }, []);
+
+  const meta = tafsirById(tafsirId);
+
+  const pick = (id) => {
+    setTafsirId(id);
+    setPicker(false);
+    saveSettings({ tafsirId: id });
+  };
 
   useEffect(() => {
     let alive = true;
     setState({ loading: true, text: null, error: null, cached: false });
     setLevel("short");
-    loadAyahTafsir(surah, ayah).then((r) => {
+    loadAyahTafsir(surah, ayah, tafsirId).then((r) => {
       if (!alive) return;
       setState({ loading: false, text: r.text, error: r.error || null, cached: !!r.fromCache });
     });
     return () => {
       alive = false;
     };
-  }, [surah, ayah]);
+  }, [surah, ayah, tafsirId]);
 
   const view = state.text ? atLevel(state.text, level) : null;
   const more = state.text ? nextLevel(level, state.text) : null;
@@ -37,10 +56,14 @@ export default function TafsirAccordion({ surah, ayah, toArabicDigits, onClose }
       style={{ fontSize: "1rem", lineHeight: 1.6 }}
     >
       <span className="flex items-center justify-between px-4 py-2.5 border-b border-[#E4DCC3] dark:border-[#3A5148] bg-[#efefef] dark:bg-[#16201C]">
-        <span className="text-xs font-bold text-[#1B4D3E] dark:text-[#D4A853]">
-          📖 {TAFSIR_NAME} — آية {toArabicDigits(ayah)}
+        <button
+          onClick={() => setPicker((v) => !v)}
+          className="text-xs font-bold text-[#1B4D3E] dark:text-[#D4A853] text-right"
+          title="غيّر التفسير"
+        >
+          📖 {meta.name} ▾ — آية {toArabicDigits(ayah)}
           {state.cached && <span className="font-normal text-[#8A7A4E]"> · محفوظ</span>}
-        </span>
+        </button>
         <button
           onClick={onClose}
           className="text-[#5B6B62] dark:text-[#A9BDB2] text-xs font-semibold px-1"
@@ -49,6 +72,31 @@ export default function TafsirAccordion({ surah, ayah, toArabicDigits, onClose }
           ✕
         </button>
       </span>
+
+      {picker && (
+        <span className="block px-3 py-2 border-b border-[#E4DCC3] dark:border-[#3A5148] bg-[#FBF8EF] dark:bg-[#1E2A24]">
+          {TAFSIRS.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => pick(t.id)}
+              className={`block w-full text-right px-3 py-2 rounded-lg mb-1 ${
+                t.id === tafsirId
+                  ? "bg-[#1B4D3E] text-[#F5F0E8]"
+                  : "hover:bg-[#FFFFFF] dark:hover:bg-[#243830]"
+              }`}
+            >
+              <span className="block text-xs font-bold">{t.name}</span>
+              <span
+                className={`block text-[10px] ${
+                  t.id === tafsirId ? "text-[#F5F0E8]/75" : "text-[#8A7A4E]"
+                }`}
+              >
+                {t.hint} · {t.source}
+              </span>
+            </button>
+          ))}
+        </span>
+      )}
 
       <span className="block px-4 py-3">
         {state.loading ? (
@@ -92,7 +140,7 @@ export default function TafsirAccordion({ surah, ayah, toArabicDigits, onClose }
             </span>
 
             <span className="block text-[10px] text-[#8A7A4E] mt-2.5 leading-relaxed">
-              المصدر: {TAFSIR_SOURCE}. الأزرار بتعرض <strong>أول سطور النص
+              المصدر: {meta.source} — عبر Quran.com. الأزرار بتعرض <strong>أول سطور النص
               الأصلي</strong> — مفيش تلخيص ولا إعادة صياغة.
             </span>
           </>

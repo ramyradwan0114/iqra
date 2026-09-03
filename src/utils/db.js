@@ -217,6 +217,7 @@ export const DEFAULT_SETTINGS = {
   location: null, // { lat, lng, source, name } — محلي فقط، مابيتبعتش لأي سيرفر
   prayerMethod: null, // طريقة حساب المواقيت
   madhab: "Shafi", // مذهب العصر
+  tafsirId: 16, // التفسير المختار — الميسر افتراضيًا
 };
 
 export async function getSettings() {
