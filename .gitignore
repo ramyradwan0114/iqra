@@ -21,3 +21,19 @@ npm-debug.log*
 .idea
 
 .vercel
+
+# ---------- أندرويد (Capacitor) ----------
+# مجلد android/ بيتولّد بـ npx cap add android، ومحتوياته بتتحدّث
+# بـ npx cap sync. بنتجاهل اللي بيتولّد ونحتفظ باللي عدّلناه بإيدينا:
+# الأيقونات، ملفات الأذان، والأذونات في AndroidManifest.
+android/.gradle/
+android/build/
+android/app/build/
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+android/capacitor-cordova-android-plugins/
+android/local.properties
+android/.idea/
+*.keystore
+*.jks

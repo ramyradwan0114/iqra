@@ -86,14 +86,17 @@ export default defineConfig({
     sourcemap: true,
     chunkSizeWarningLimit: 700,
     rollupOptions: {
-      // Capacitor بيتحمّل ديناميكيًا في utils/nativeAthan.js عشان نسخة
-      // الويب تفضل شغّالة من غيره. بس Rollup بيحاول يحلّ الاستيراد وقت
-      // البناء حتى لو ديناميكي، وبيقع لو الحزمة مش متثبّتة — اختبرته
-      // فعلًا ووقع بـ "failed to resolve import @capacitor/core".
+      // ملاحظة على Capacitor: كانت هنا external: [/^@capacitor\//]
+      // وكانت **غلط**. external بتسيب الاستيراد نصًّا مجرّدًا
+      // ("@capacitor/core") في الملف الناتج، والمتصفّح — وWebView بتاع
+      // التطبيق الأصلي كمان — مابيقدرش يحلّ اسم زي ده، فبيرمي خطأ.
+      // النتيجة إن الـ try/catch في nativeAthan.js كان بيبلع الخطأ
+      // ويرجّع null، فالتطبيق الأصلي كان بيبان كأنه نسخة متصفّح
+      // والأذان مابيتجدولش.
       //
-      // external معناه: سيب الاستيراد ده لوقت التشغيل، والـ try/catch
-      // جوّه الملف بيمسك الفشل ويرجّع null بهدوء في المتصفّح.
-      external: [/^@capacitor\//],
+      // الصح إننا نسيب Vite يحزم الحزمة عادي: في الويب
+      // Capacitor.isNativePlatform() بترجّع false لوحدها، وده اللي
+      // بيخلّي الكود يعرف إنه مش على تطبيق أصلي — من غير أي حيلة.
       output: {
         // اسم ثابت لجزء Firebase عشان نقدر نستثنيه من الـ precache
         manualChunks(id) {
