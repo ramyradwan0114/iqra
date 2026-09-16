@@ -86,6 +86,14 @@ export default defineConfig({
     sourcemap: true,
     chunkSizeWarningLimit: 700,
     rollupOptions: {
+      // Capacitor بيتحمّل ديناميكيًا في utils/nativeAthan.js عشان نسخة
+      // الويب تفضل شغّالة من غيره. بس Rollup بيحاول يحلّ الاستيراد وقت
+      // البناء حتى لو ديناميكي، وبيقع لو الحزمة مش متثبّتة — اختبرته
+      // فعلًا ووقع بـ "failed to resolve import @capacitor/core".
+      //
+      // external معناه: سيب الاستيراد ده لوقت التشغيل، والـ try/catch
+      // جوّه الملف بيمسك الفشل ويرجّع null بهدوء في المتصفّح.
+      external: [/^@capacitor\//],
       output: {
         // اسم ثابت لجزء Firebase عشان نقدر نستثنيه من الـ precache
         manualChunks(id) {

@@ -1,0 +1,14 @@
+{
+  "appId": "app.iqra.quran",
+  "appName": "اقرأ",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_iqra",
+      "iconColor": "#1B4D3E"
+    }
+  }
+}

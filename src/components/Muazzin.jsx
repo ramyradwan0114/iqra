@@ -10,6 +10,13 @@ import { useLocation, usePrayerTimes } from "../hooks/usePrayerTimes.js";
 import { PRAYERS, fmtTime, countdown } from "../utils/prayerTimes.js";
 import { buzz } from "../hooks/useProgress.js";
 import { idbGet, idbSet, STORES } from "../utils/db.js";
+import {
+  isNative,
+  ensureChannels,
+  requestPermission as askNativePerm,
+  scheduleAthan,
+  testAthan,
+} from "../utils/nativeAthan.js";
 
 const PRAYER_LIST = PRAYERS.filter((p) => !p.notPrayer);
 
@@ -24,8 +31,43 @@ export default function Muazzin({ settings, onChange, toArabicDigits, onToast })
   const [fellBack, setFellBack] = useState(false);
   const [done, setDone] = useState({}); // الصلوات المؤدّاة النهاردة
   const [dhikrFor, setDhikrFor] = useState(null);
+  // الأذان الأصلي (Capacitor): بيشتغل والتطبيق مقفول. في المتصفّح
+  // كل الدوال دي بترجّع false بهدوء، فالسلوك القديم ما بيتغيّرش.
+  const [native, setNative] = useState(false);
+  const [scheduled, setScheduled] = useState(0);
 
   const today = prayerDayKey();
+
+  useEffect(() => {
+    isNative().then(setNative);
+  }, []);
+
+  // نجدول أذان اليوم مع كل فتح للتطبيق، ومع أي تغيير في المؤذّن
+  // أو الموقع أو المواقيت. الجدولة بتلغي القديم الأول فمفيش تكرار.
+  useEffect(() => {
+    if (!native || !ready || !times || !cfg.enabled) return;
+    let alive = true;
+    (async () => {
+      await ensureChannels(MUEZZINS);
+      const perm = await askNativePerm();
+      if (perm !== "granted" || !alive) return;
+      const list = PRAYERS.map((p) => ({
+        id: p.id,
+        label: p.label,
+        at: times[p.id],
+        notPrayer: p.notPrayer,
+      }));
+      const n = await scheduleAthan(list, {
+        muezzinId: cfg.muezzin,
+        enabled: cfg.perPrayer || {},
+      });
+      if (alive) setScheduled(n);
+    })();
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [native, ready, cfg.enabled, cfg.muezzin, times?.fajr?.getTime?.()]);
 
   useEffect(() => {
     idbGet(STORES.settings, "prayed").then((r) => {
@@ -291,11 +333,35 @@ export default function Muazzin({ settings, onChange, toArabicDigits, onToast })
         </div>
       )}
 
-      <p className="text-[11px] text-[#6B5A2E] bg-[#FBF3E2] rounded-xl px-4 py-3 leading-relaxed">
-        الأذان بيشتغل <strong>والتطبيق مفتوح</strong> — المتصفح مابيسمحش بتشغيل
-        صوت والتطبيق مقفول. لو عايز أذان مضمون وقت الصلاة، سيب التطبيق مفتوح، أو
-        فعّل تذكيرات الإشعارات جنبه.
-      </p>
+      {/* الحالة بتتغيّر حسب النسخة: نسخة المتجر بتجدول أذانًا حقيقيًا،
+          ونسخة الويب لأ. مهم نقول الحقيقة لكل واحدة بدل رسالة واحدة. */}
+      {native ? (
+        <div className="text-[11px] text-[#1B4D3E] dark:text-[#8FD6C0] bg-[#2E9E6B]/15 rounded-xl px-4 py-3 leading-relaxed">
+          ✅ الأذان مجدوَل في نظام الجهاز — <strong>هيأذّن في وقته والتطبيق مقفول</strong>.
+          {scheduled > 0 && (
+            <> اتجدول {toArabicDigits(scheduled)} أذان للصلوات الجاية.</>
+          )}
+          <br />
+          <button
+            onClick={async () => {
+              const okTest = await testAthan(cfg.muezzin, "normal", 5);
+              onToast?.(
+                okTest ? "هيأذّن بعد ٥ ثواني — اقفل التطبيق وجرّب" : "تعذّرت التجربة"
+              );
+            }}
+            className="mt-2 px-3 py-1.5 rounded-lg text-xs font-bold bg-[#1B4D3E] text-[#F5F0E8]"
+          >
+            🔔 جرّب الأذان دلوقتي
+          </button>
+        </div>
+      ) : (
+        <p className="text-[11px] text-[#6B5A2E] bg-[#FBF3E2] rounded-xl px-4 py-3 leading-relaxed">
+          في نسخة المتصفّح الأذان بيشتغل <strong>والتطبيق مفتوح بس</strong> — المتصفّح
+          مابيسمحش بتشغيل صوت وهو مقفول، ودي حدود المتصفّح مش نقص في التطبيق.
+          <strong> نسخة جوجل بلاي بتأذّن في وقتها والتطبيق مقفول</strong>، لأن نظام
+          أندرويد هو اللي بيجدول الأذان.
+        </p>
+      )}
     </div>
   );
 }
