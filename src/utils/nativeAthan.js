@@ -17,10 +17,30 @@
 //  لو Capacitor مش موجود، فنسخة الويب على Vercel ما بتتأثرش.
 // ============================================================
 
-// الأذان بيتجدول لليوم الحالي بس. الجدولة بتتجدّد كل ما التطبيق
-// يتفتح — ده مقصود: أندرويد بيحدّد عدد التنبيهات المجدولة، وجدولة
-// شهر كامل مقدّمًا بتستهلك الحد من غير داعي.
-export const ATHAN_DAYS_AHEAD = 2;
+// ============================================================
+//  مدى الجدولة — ليه مش "للأبد"
+// ------------------------------------------------------------
+//  أندرويد بيحدّد **٥٠٠ منبّه مضبوط (exact alarm) لكل تطبيق**. مفيش
+//  طريقة تعدّي الحد ده، ومفيش طريقة تقول للنظام "أذّن كل يوم للأبد" —
+//  التكرار المدعوم (repeats/every) بيكرّر على فاصل ثابت، ومواقيت
+//  الصلاة بتتحرّك كل يوم فمابتنفعش معاه.
+//
+//  فالحل إننا نملا المدى المتاح: ٦٠ يوم × ٥ صلوات = ٣٠٠ منبّه،
+//  وبنسيب ٢٠٠ للتذكيرات وهامش أمان. ٦٠ يوم عمليًا "على طول":
+//  المستخدم هيفتح التطبيق مرة خلال شهرين، وأول ما يفتحه بتتجدّد
+//  لـ٦٠ يوم تانيين من تاريخه.
+//
+//  واللي بيقفل الدايرة إن الجدولة بتتجدّد كمان:
+//    • عند كل فتح للتطبيق
+//    • عند كل رجوع من الخلفية (appStateChange)
+//    • بعد إعادة تشغيل الموبايل — الإضافة نفسها بتسجّل
+//      BOOT_COMPLETED وبترجّع المنبّهات لوحدها
+//
+//  الحاجة الوحيدة اللي بتلغي كل ده: إغلاق قسري (Force stop) أو
+//  إن النظام يقتل التطبيق. وده مش قابل للحل من جوّه الكود —
+//  بيتحل بإعفاء التطبيق من تقييد البطارية (شوف batteryHint).
+export const ATHAN_DAYS_AHEAD = 59; // اليوم + ٥٩ = ٦٠ يوم
+export const ATHAN_MAX_NOTIFS = 300;
 
 // معرّفات ثابتة عشان نقدر نلغي ونعيد الجدولة من غير تكرار
 const BASE_ID = 7100;
@@ -153,6 +173,123 @@ export async function scheduleAthan(prayers, { muezzinId, enabled = {} } = {}) {
   try {
     await a.LocalNotifications.schedule({ notifications: list });
     return list.length;
+  } catch {
+    return 0;
+  }
+}
+
+// ------------------------------------------------------------
+//  جدولة عدّة أيام
+// ------------------------------------------------------------
+//  computeForDate(date) لازم ترجّع { fajr, dhuhr, asr, maghrib, isha }
+//  كـ Date لليوم ده. بنبني قائمة مسطّحة لكل الأيام وندّيها
+//  لـ scheduleAthan مرة واحدة — هي اللي بتلغي القديم وتشيل الماضي.
+//
+//  بيرجّع { count, first, last } عشان الواجهة تقدر تطمّن المستخدم
+//  بأرقام حقيقية بدل ما تقول "متجدول" وخلاص.
+export async function scheduleAthanForDays(
+  computeForDate,
+  { muezzinId, enabled = {}, days = ATHAN_DAYS_AHEAD, now = new Date() } = {}
+) {
+  const flat = [];
+  for (let d = 0; d <= days; d++) {
+    const date = new Date(now);
+    date.setDate(date.getDate() + d);
+    let t;
+    try {
+      t = computeForDate(date);
+    } catch {
+      continue;
+    }
+    if (!t) continue;
+    for (const p of PRAYER_IDS) {
+      const at = t[p.id];
+      if (!at) continue;
+      flat.push({ id: p.id, label: p.label, at });
+    }
+  }
+  flat.sort((a, b) => new Date(a.at) - new Date(b.at));
+  // سقف صارم: لو عدّينا حد أندرويد، schedule() بترمي والجدولة كلها
+  // بتفشل — يعني المستخدم يخسر الأذان خالص بدل ما يخسر آخر يوم.
+  const capped = flat
+    .filter((p) => new Date(p.at).getTime() > now.getTime())
+    .slice(0, ATHAN_MAX_NOTIFS);
+  const count = await scheduleAthan(capped, { muezzinId, enabled });
+  const future = capped;
+  return {
+    count,
+    first: future[0]?.at || null,
+    last: future[future.length - 1]?.at || null,
+  };
+}
+
+// ------------------------------------------------------------
+//  تقييد البطارية — السبب رقم ١ لضياع الأذان
+// ------------------------------------------------------------
+//  أجهزة شاومي وهواوي وأوبو وفيفو وسامسونج بتقتل التطبيقات في
+//  الخلفية بسياسات خاصة بيها **فوق** سياسة أندرويد الأصلية. لما
+//  النظام يقتل التطبيق بالطريقة دي، المنبّهات المجدولة بتتلغي —
+//  ومفيش سطر كود يمنع ده.
+//
+//  الحل الوحيد إن المستخدم يعفي التطبيق بإيده. الدالة دي بتقول
+//  إحنا على جهاز من دول ولا لأ، عشان الواجهة تعرض الإرشاد للي
+//  محتاجه بس بدل ما تزنّ على الكل.
+export function needsBatteryHint() {
+  const ua = (typeof navigator !== "undefined" && navigator.userAgent) || "";
+  return /xiaomi|redmi|poco|huawei|honor|oppo|realme|vivo|oneplus|samsung/i.test(ua);
+}
+
+export const BATTERY_HINT = {
+  title: "عشان الأذان مايتقطعش",
+  steps: [
+    "إعدادات الهاتف ← التطبيقات ← اقرأ ← البطارية ← اختر «بدون قيود»",
+    "في شاومي وريدمي: مدير التطبيقات ← اقرأ ← التشغيل التلقائي ← فعّله",
+    "في شاومي كمان: اضغط مطوّلًا على التطبيق في قائمة المهام ← اقفل القفل 🔒",
+  ],
+};
+
+// ------------------------------------------------------------
+//  الرجوع للواجهة
+// ------------------------------------------------------------
+//  الجدولة بتغطّي ٣ أيام، لكن المستخدم اللي سايب التطبيق مفتوح في
+//  الخلفية أسبوع مش هيعدّي بـ"فتحة" جديدة. الحدث ده بيمسك الحالة
+//  دي: كل ما التطبيق يرجع قدّام، نعيد الجدولة.
+export async function onAppResume(handler) {
+  try {
+    const [{ Capacitor }, { App }] = await Promise.all([
+      import("@capacitor/core"),
+      import("@capacitor/app"),
+    ]);
+    if (!Capacitor?.isNativePlatform?.()) return () => {};
+    const sub = await App.addListener("appStateChange", ({ isActive }) => {
+      if (isActive) handler();
+    });
+    return () => sub?.remove?.();
+  } catch {
+    return () => {};
+  }
+}
+
+// الشروق مش هنا عن قصد — مفيش أذان للشروق
+const PRAYER_IDS = [
+  { id: "fajr", label: "الفجر" },
+  { id: "dhuhr", label: "الظهر" },
+  { id: "asr", label: "العصر" },
+  { id: "maghrib", label: "المغرب" },
+  { id: "isha", label: "العشاء" },
+];
+
+// عدد تنبيهات الأذان المعلّقة فعلًا في النظام — مصدر الحقيقة الوحيد.
+// الواجهة كانت بتعرض رقم من الـ state، وده بيفضل صح لحد ما أي حاجة
+// تانية تلغي الجدولة من ورا ظهرها.
+export async function pendingAthanCount() {
+  const a = await api();
+  if (!a) return 0;
+  try {
+    const pending = await a.LocalNotifications.getPending();
+    return (pending?.notifications || []).filter(
+      (n) => n.id >= BASE_ID && n.id < BASE_ID + 1000
+    ).length;
   } catch {
     return 0;
   }

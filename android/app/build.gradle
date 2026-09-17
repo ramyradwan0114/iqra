@@ -1,5 +1,30 @@
 apply plugin: 'com.android.application'
 
+// ============================================================
+//  توقيع نسخة الإصدار
+// ------------------------------------------------------------
+//  جوجل بلاي بيرفض أي .aab غير موقَّع بمفتاح إصدار. المفتاح ده
+//  **مايتفقدش** — لو ضاع، مش هتقدر تنشر تحديث للتطبيق تاني أبدًا
+//  (إلا بطلب استرجاع من جوجل وبشروط). خد منه نسخة احتياطية برّه
+//  الكمبيوتر.
+//
+//  الملف android/keystore.properties مستثنى من git عمدًا، عشان
+//  كلمات السرّ ماتوصلش GitHub. شكله:
+//
+//     storeFile=C:\\iqra\\iqra-release.jks
+//     storePassword=...
+//     keyAlias=iqra
+//     keyPassword=...
+//
+//  ولو الملف مش موجود، البناء بيكمّل عادي — نسخة الـ debug
+//  مابتحتاجهوش، فالتطوير مابيتعطّلش.
+// ============================================================
+def keystoreProps = new Properties()
+def keystorePropsFile = rootProject.file("keystore.properties")
+if (keystorePropsFile.exists()) {
+    keystoreProps.load(new FileInputStream(keystorePropsFile))
+}
+
 android {
     namespace = "app.iqra.quran"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -16,8 +41,25 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (keystoreProps['storeFile']) {
+                storeFile file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
+    }
+
     buildTypes {
         release {
+            // لو المفتاح مش متظبّط، بنسيب التوقيع فاضي بدل ما البناء
+            // يقع برسالة غامضة. الـ .aab وقتها مش هيتقبل في بلاي،
+            // وده أوضح من فشل بناء.
+            if (keystoreProps['storeFile']) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

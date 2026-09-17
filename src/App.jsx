@@ -44,6 +44,19 @@ import {
   showNotification,
   surahOfTheDay,
 } from "./utils/notifications.js";
+import {
+  isNative as remindersNative,
+  scheduleDhikrReminders,
+  onNativeNotificationTap,
+} from "./utils/nativeReminders.js";
+import {
+  ensureChannels as ensureAthanChannels,
+  requestPermission as askAthanPerm,
+  scheduleAthanForDays,
+  onAppResume,
+} from "./utils/nativeAthan.js";
+import { MUEZZINS, DEFAULT_ATHAN } from "./utils/athan.js";
+import { computeTimes } from "./utils/prayerTimes.js";
 import { dayIndex, dayKey as quizDayKey } from "./utils/dailyQuiz.js";
 import { parseLink, clearLinkParams, onServiceWorkerNavigate } from "./utils/deepLink.js";
 import { useKhatma } from "./hooks/useQuranJournal.js";
@@ -2482,8 +2495,16 @@ export default function App() {
   const salawatRef = useRef(salawat);
   salawatRef.current = salawat;
 
+  // على التطبيق الأصلي، نظام أندرويد هو اللي بيجدول التذكيرات —
+  // فالحلقات اللي تحت (اللي بتشتغل كل دقيقة والتطبيق مفتوح) لازم
+  // تتوقّف، وإلا المستخدم هيوصله الإشعار مرتين.
+  const [dhikrNative, setDhikrNative] = useState(false);
   useEffect(() => {
-    if (!settingsLoaded || !salawat.enabled) return;
+    remindersNative().then(setDhikrNative);
+  }, []);
+
+  useEffect(() => {
+    if (!settingsLoaded || !salawat.enabled || dhikrNative) return;
     let stopped = false;
 
     const tick = async () => {
@@ -2512,7 +2533,105 @@ export default function App() {
       clearInterval(iv);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settingsLoaded, salawat.enabled, salawat.intervalHours]);
+  }, [settingsLoaded, salawat.enabled, salawat.intervalHours, dhikrNative]);
+
+  // ---------- جدولة الأذان ----------
+  //  ⚠️ ده كان جوّه مكوّن Muazzin، وده كان **غلط كبير**: المكوّن ده
+  //  مابيتركّبش غير لما المستخدم يفتح شاشة المؤذّن بنفسه. يعني
+  //  المستخدم ممكن يفتح التطبيق كل يوم ومايتجدولش أذان ولا مرة.
+  //  ولمّا كان بيتجدول، كان لليوم الحالي بس والأوقات اللي فاتت بتتشال —
+  //  فمين يفتح بعد الظهر، أذان الظهر مابيتجدولش لا النهاردة ولا بكرة.
+  //
+  //  دلوقتي: على مستوى التطبيق، عند كل فتح وكل رجوع للواجهة، ولتلات
+  //  أيام قدّام.
+  const athanCfg = { ...DEFAULT_ATHAN, ...(settings?.athan || {}) };
+  const athanLoc = settings?.location;
+  const [athanScheduled, setAthanScheduled] = useState(null);
+
+  const doScheduleAthan = useCallback(async () => {
+    if (!dhikrNative || !athanLoc || !athanCfg.enabled) return;
+    await ensureAthanChannels(MUEZZINS);
+    const perm = await askAthanPerm();
+    if (perm !== "granted") return;
+    const r = await scheduleAthanForDays(
+      (date) =>
+        computeTimes({
+          lat: athanLoc.lat,
+          lng: athanLoc.lng,
+          method: settings?.prayerMethod || athanLoc.method || "Egyptian",
+          madhab: settings?.madhab || "Shafi",
+          date,
+        }).times,
+      { muezzinId: athanCfg.muezzin, enabled: athanCfg.perPrayer || {} }
+    );
+    setAthanScheduled(r);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    dhikrNative,
+    athanLoc?.lat,
+    athanLoc?.lng,
+    athanCfg.enabled,
+    athanCfg.muezzin,
+    settings?.prayerMethod,
+    settings?.madhab,
+  ]);
+
+  useEffect(() => {
+    if (!settingsLoaded) return;
+    doScheduleAthan();
+    // ولو التطبيق فضل في الخلفية أيام، نعيد الجدولة أول ما يرجع
+    let off = () => {};
+    let cancelled = false;
+    onAppResume(doScheduleAthan).then((f) => (cancelled ? f() : (off = f)));
+    return () => {
+      cancelled = true;
+      off();
+    };
+  }, [settingsLoaded, doScheduleAthan]);
+
+  // ---------- تذكيرات الذِّكر على التطبيق الأصلي ----------
+  //  الإشعار هنا **بيحمل الذِّكر نفسه** في نصّه — يتقرا من شاشة
+  //  القفل من غير ما التطبيق يتفتح. ده الفرق الحقيقي بين تذكير
+  //  بيتعمله tap وتذكير بيتعمله dismiss.
+  //
+  //  بنعيد الجدولة عند كل فتح وعند كل تغيير في الإعدادات، لأن
+  //  المدى يومين بس (شوف nativeReminders.js).
+  const notifForSchedule = settings?.notifications || {};
+  useEffect(() => {
+    if (!dhikrNative || !settingsLoaded) return;
+    scheduleDhikrReminders({
+      salawat: { ...DEFAULT_SALAWAT, ...(settings?.salawat || {}) },
+      tasbih: {
+        enabled: !!(notifForSchedule.enabled && notifForSchedule.tasbih),
+        intervalHours: notifForSchedule.tasbihInterval || 3,
+        // نفس ساعات الهدوء بتاعة الصلاة على النبي — مالهاش معنى
+        // إن الواحد يسكّت تذكير ويسيب التاني يصحّيه.
+        quietFrom: salawat.quietFrom,
+        quietTo: salawat.quietTo,
+      },
+      morning: {
+        enabled: !!(notifForSchedule.enabled && notifForSchedule.morning),
+        hour: NOTIF_KINDS.morning.hour,
+      },
+      evening: {
+        enabled: !!(notifForSchedule.enabled && notifForSchedule.evening),
+        hour: NOTIF_KINDS.evening.hour,
+      },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    dhikrNative,
+    settingsLoaded,
+    salawat.enabled,
+    salawat.intervalHours,
+    salawat.quietFrom,
+    salawat.quietTo,
+    notifForSchedule.tasbih,
+    notifForSchedule.tasbihInterval,
+    notifForSchedule.enabled,
+    notifForSchedule.morning,
+    notifForSchedule.evening,
+  ]);
 
   // ---------- محرّك التذكيرات ----------
   // بيفحص عند الفتح وكل دقيقة والتطبيق شغّال. مش بديل عن Web Push:
@@ -2534,7 +2653,10 @@ export default function App() {
     const check = async () => {
       if (stopped) return;
       const live = notifRef.current; // أحدث إعدادات مش المحفوظة في الإغلاق
-      const due = dueReminders(live, { lastActiveDay: streakDayRef.current });
+      let due = dueReminders(live, { lastActiveDay: streakDayRef.current });
+      // أذكار الصباح والمساء متجدولة على مستوى النظام في التطبيق
+      // الأصلي — لو سبناها هنا كمان هتظهر مرتين.
+      if (dhikrNative) due = due.filter((k) => k !== "morning" && k !== "evening");
       if (!due.length) return;
 
       const today = quizDayKey();
@@ -2581,7 +2703,7 @@ export default function App() {
       clearInterval(iv);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settingsLoaded, notif.enabled, notif.lesson, notif.streak, notif.surah, notif.hour, notif.minute]);
+  }, [settingsLoaded, notif.enabled, notif.lesson, notif.streak, notif.surah, notif.hour, notif.minute, dhikrNative]);
   const dark = settings?.theme === "dark";
 
   // الوضع الليلي بيتطبّق على <html> عشان Tailwind darkMode:"class" يشتغل
@@ -2625,7 +2747,23 @@ export default function App() {
 
   useEffect(() => {
     applyLink(parseLink());
-    return onServiceWorkerNavigate(applyLink);
+    const offSW = onServiceWorkerNavigate(applyLink);
+
+    // التطبيق الأصلي: أندرويد بيفتح التطبيق لكن مابيقولش إنه جاي
+    // من إشعار. من غير الاشتراك ده، الضغط على "صلِّ على النبي"
+    // بيفتح آخر شاشة كان المستخدم فيها بدل عدّاد التسبيح.
+    let offNative = () => {};
+    let cancelled = false;
+    onNativeNotificationTap((url) => applyLink(parseLink(url))).then((off) => {
+      if (cancelled) off();
+      else offNative = off;
+    });
+
+    return () => {
+      cancelled = true;
+      offSW();
+      offNative();
+    };
   }, [applyLink]);
   const [toast, setToast] = useState(null);
 

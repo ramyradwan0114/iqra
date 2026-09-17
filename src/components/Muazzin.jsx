@@ -12,10 +12,10 @@ import { buzz } from "../hooks/useProgress.js";
 import { idbGet, idbSet, STORES } from "../utils/db.js";
 import {
   isNative,
-  ensureChannels,
-  requestPermission as askNativePerm,
-  scheduleAthan,
+  pendingAthanCount,
   testAthan,
+  needsBatteryHint,
+  BATTERY_HINT,
 } from "../utils/nativeAthan.js";
 
 const PRAYER_LIST = PRAYERS.filter((p) => !p.notPrayer);
@@ -42,32 +42,24 @@ export default function Muazzin({ settings, onChange, toArabicDigits, onToast })
     isNative().then(setNative);
   }, []);
 
-  // نجدول أذان اليوم مع كل فتح للتطبيق، ومع أي تغيير في المؤذّن
-  // أو الموقع أو المواقيت. الجدولة بتلغي القديم الأول فمفيش تكرار.
+  // ⚠️ الجدولة **مابقتش هنا**. كانت في المكوّن ده، والمكوّن مابيتركّبش
+  // غير لما المستخدم يفتح شاشة المؤذّن — فاللي مابيفتحهاش مكانش
+  // بيتجدوله أذان أصلًا. اتنقلت لـ App.jsx عشان تشتغل عند كل فتح
+  // للتطبيق ولتلات أيام قدّام.
+  //
+  // هنا بنعرض بس العدد المعلّق فعلًا في النظام — مش رقم من الذاكرة.
+  // لو عرضنا رقم محلي، هيفضل يقول "متجدول" حتى لو النظام ملغيها.
   useEffect(() => {
-    if (!native || !ready || !times || !cfg.enabled) return;
+    if (!native) return;
     let alive = true;
-    (async () => {
-      await ensureChannels(MUEZZINS);
-      const perm = await askNativePerm();
-      if (perm !== "granted" || !alive) return;
-      const list = PRAYERS.map((p) => ({
-        id: p.id,
-        label: p.label,
-        at: times[p.id],
-        notPrayer: p.notPrayer,
-      }));
-      const n = await scheduleAthan(list, {
-        muezzinId: cfg.muezzin,
-        enabled: cfg.perPrayer || {},
-      });
-      if (alive) setScheduled(n);
-    })();
+    const read = () => pendingAthanCount().then((n) => alive && setScheduled(n));
+    read();
+    const iv = setInterval(read, 5000);
     return () => {
       alive = false;
+      clearInterval(iv);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [native, ready, cfg.enabled, cfg.muezzin, times?.fajr?.getTime?.()]);
+  }, [native, cfg.enabled, cfg.muezzin]);
 
   useEffect(() => {
     idbGet(STORES.settings, "prayed").then((r) => {
@@ -339,7 +331,12 @@ export default function Muazzin({ settings, onChange, toArabicDigits, onToast })
         <div className="text-[11px] text-[#1B4D3E] dark:text-[#8FD6C0] bg-[#2E9E6B]/15 rounded-xl px-4 py-3 leading-relaxed">
           ✅ الأذان مجدوَل في نظام الجهاز — <strong>هيأذّن في وقته والتطبيق مقفول</strong>.
           {scheduled > 0 && (
-            <> اتجدول {toArabicDigits(scheduled)} أذان للصلوات الجاية.</>
+            <>
+              {" "}
+              اتجدول <strong>{toArabicDigits(scheduled)}</strong> أذان — يعني حوالي{" "}
+              <strong>{toArabicDigits(Math.floor(scheduled / 5))} يوم</strong> قدّام
+              من غير ما تفتح التطبيق. وبتتجدّد لوحدها كل ما تفتحه.
+            </>
           )}
           <br />
           <button
@@ -353,6 +350,21 @@ export default function Muazzin({ settings, onChange, toArabicDigits, onToast })
           >
             🔔 جرّب الأذان دلوقتي
           </button>
+
+          {/* الإرشاد ده بيظهر لأصحاب الأجهزة اللي بتقتل التطبيقات بس.
+              من غيره، الجدولة سليمة والمستخدم لسه ممكن يفوّت الأذان
+              ومايعرفش ليه. */}
+          {needsBatteryHint() && (
+            <div className="mt-3 pt-3 border-t border-[#1B4D3E]/20 text-[#6B5A2E] dark:text-[#D4A853]">
+              <strong>⚠️ {BATTERY_HINT.title}:</strong> جهازك بيقفل التطبيقات في
+              الخلفية تلقائيًا، وده ممكن يلغي الأذان المجدوَل.
+              <ul className="list-disc pr-4 mt-1.5 space-y-1">
+                {BATTERY_HINT.steps.map((s, i) => (
+                  <li key={i}>{s}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       ) : (
         <p className="text-[11px] text-[#6B5A2E] bg-[#FBF3E2] rounded-xl px-4 py-3 leading-relaxed">

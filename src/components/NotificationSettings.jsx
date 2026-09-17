@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   NOTIF_KINDS,
   DEFAULT_NOTIF_SETTINGS,
@@ -7,11 +7,19 @@ import {
   requestPermission,
   showNotification,
 } from "../utils/notifications.js";
+import { isNative, testDhikr } from "../utils/nativeReminders.js";
 
 export default function NotificationSettings({ settings, onChange, toArabicDigits }) {
   const s = { ...DEFAULT_NOTIF_SETTINGS, ...(settings || {}) };
   const [perm, setPerm] = useState(() => permission());
   const supported = notificationsSupported();
+
+  // على التطبيق الأصلي القيود اللي مكتوبة تحت مابتنطبقش — النظام
+  // نفسه بيجدول. عرض تحذير مش صحيح أسوأ من عدم عرض أي حاجة.
+  const [native, setNative] = useState(false);
+  useEffect(() => {
+    isNative().then(setNative);
+  }, []);
 
   const ask = async () => {
     const p = await requestPermission();
@@ -82,6 +90,45 @@ export default function NotificationSettings({ settings, onChange, toArabicDigit
                 </label>
               ))}
 
+              {/* تذكير التسبيح — كل إشعار بذِكر مختلف بالتناوب */}
+              <label className="flex items-center justify-between bg-[#FBF8EF] dark:bg-[#243830] border border-[#E4DCC3] dark:border-[#3A5148] rounded-2xl px-4 py-3">
+                <span>
+                  <span className="font-semibold text-sm block">تذكير بالتسبيح</span>
+                  <span className="text-[11px] text-[#5B6B62] dark:text-[#A9BDB2]">
+                    الذِّكر نفسه مكتوب في الإشعار — تقراه وتسبّح من غير ما تفتح
+                    التطبيق
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={!!s.tasbih}
+                  onChange={() => toggle("tasbih")}
+                  className="w-5 h-5 accent-[#1B4D3E]"
+                />
+              </label>
+
+              {s.tasbih && (
+                <div className="flex items-center gap-3 bg-[#FBF8EF] dark:bg-[#243830] border border-[#E4DCC3] dark:border-[#3A5148] rounded-2xl px-4 py-3">
+                  <span className="text-sm font-semibold">كل</span>
+                  <select
+                    value={s.tasbihInterval || 3}
+                    onChange={(e) =>
+                      onChange({ ...s, tasbihInterval: Number(e.target.value) })
+                    }
+                    className="bg-[#FFFFFF] dark:bg-[#1E2A24] border border-[#E4DCC3] dark:border-[#3A5148] rounded-lg px-3 py-1.5 text-sm"
+                  >
+                    {[1, 2, 3, 4, 6].map((h) => (
+                      <option key={h} value={h}>
+                        {toArabicDigits(h)} ساعة
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-[11px] text-[#5B6B62] dark:text-[#A9BDB2]">
+                    بيقف من ١٠م لـ ٨ص
+                  </span>
+                </div>
+              )}
+
               {s.lesson && (
                 <div className="flex items-center gap-3 bg-[#FBF8EF] dark:bg-[#243830] border border-[#E4DCC3] dark:border-[#3A5148] rounded-2xl px-4 py-3">
                   <span className="text-sm font-semibold">ميعاد الدرس</span>
@@ -116,16 +163,39 @@ export default function NotificationSettings({ settings, onChange, toArabicDigit
         </>
       )}
 
-      <div className="text-[11px] text-[#6B5A2E] bg-[#FBF3E2] rounded-xl px-4 py-3 leading-relaxed">
-        <strong>مهم تعرفه:</strong> المتصفحات مابتسمحش بجدولة إشعارات والتطبيق
-        مقفول من غير سيرفر (خاصية الجدولة المحلية اتسحبت من المعايير). يعني:
-        <br />• التطبيق مفتوح ووصل الميعاد → التذكير بيظهر في وقته.
-        <br />• التطبيق كان مقفول → التذكير بيظهر <strong>أول ما تفتحه</strong> بعد
-        الميعاد، مرة واحدة في اليوم.
-        <br />
-        عشان تذكير مضمون في ميعاده والتطبيق مقفول، محتاج Web Push بمفاتيح VAPID
-        وكرون على السيرفر — ينفع ببلاش على Vercel، بس محتاج باك-إند.
-      </div>
+      {native ? (
+        <div className="text-[11px] text-[#1B4D3E] dark:text-[#8FD6C0] bg-[#1B4D3E]/10 rounded-xl px-4 py-3 leading-relaxed">
+          <strong>التذكيرات بتشتغل والتطبيق مقفول.</strong> نظام أندرويد نفسه
+          هو اللي بيجدولها، والذِّكر مكتوب جوّه الإشعار — تقراه من شاشة القفل.
+          <br />
+          تذكير التسبيح والصلاة على النبي <strong>من غير صوت</strong> عن قصد،
+          عشان تكرارها مايخلّيكش تقفل إشعارات التطبيق كلها وتخسر الأذان. أذكار
+          الصباح والمساء بصوت.
+          {perm === "granted" && (
+            <>
+              <br />
+              <button
+                onClick={() => testDhikr(5)}
+                className="mt-2 underline font-bold"
+              >
+                جرّب تذكير ذِكر بعد ٥ ثوانٍ
+              </button>
+            </>
+          )}
+        </div>
+      ) : (
+        <div className="text-[11px] text-[#6B5A2E] bg-[#FBF3E2] rounded-xl px-4 py-3 leading-relaxed">
+          <strong>مهم تعرفه:</strong> المتصفحات مابتسمحش بجدولة إشعارات والتطبيق
+          مقفول من غير سيرفر (خاصية الجدولة المحلية اتسحبت من المعايير). يعني في
+          نسخة المتصفح:
+          <br />• التطبيق مفتوح ووصل الميعاد → التذكير بيظهر في وقته.
+          <br />• التطبيق كان مقفول → التذكير بيظهر <strong>أول ما تفتحه</strong> بعد
+          الميعاد، مرة واحدة في اليوم.
+          <br />
+          <strong>نسخة أندرويد من المتجر مافيهاش القيد ده</strong> — التذكيرات
+          بتوصل في ميعادها والتطبيق مقفول، والذِّكر مكتوب جوّه الإشعار.
+        </div>
+      )}
     </div>
   );
 }

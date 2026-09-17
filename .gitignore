@@ -37,3 +37,6 @@ android/local.properties
 android/.idea/
 *.keystore
 *.jks
+# كلمات سرّ مفتاح التوقيع — لو دي اترفعت على GitHub يبقى أي حد
+# يقدر ينشر تحديث باسم تطبيقك. مايتحطّش في git أبدًا.
+android/keystore.properties
