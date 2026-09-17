@@ -45,25 +45,30 @@ export const ATHAN_MAX_NOTIFS = 300;
 // معرّفات ثابتة عشان نقدر نلغي ونعيد الجدولة من غير تكرار
 const BASE_ID = 7100;
 
-let cachedApi = null;
-let checked = false;
-
 // بنحمّل Capacitor ديناميكيًا. لو مش متثبّت (نسخة الويب) بنرجّع null
 // من غير ما نكسّر أي حاجة.
-async function api() {
-  if (checked) return cachedApi;
-  checked = true;
-  try {
-    const [{ Capacitor }, { LocalNotifications }] = await Promise.all([
-      import("@capacitor/core"),
-      import("@capacitor/local-notifications"),
-    ]);
-    if (!Capacitor?.isNativePlatform?.()) return (cachedApi = null);
-    cachedApi = { Capacitor, LocalNotifications };
-    return cachedApi;
-  } catch {
-    return (cachedApi = null);
-  }
+//
+// ⚠️ بنكاش الوعد مش النتيجة. الشكل القديم (علم `checked` بيتقلب قبل
+// ما الاستيراد يخلّص) بيخلّي أي نداء تاني في نفس اللحظة يرجّع null —
+// وده بيتحوّل عندنا لـ«مش تطبيق أصلي» وهو تطبيق أصلي فعلًا.
+// StrictMode بينفّذ الـeffects مرتين فالسباق ده مش نظري.
+let apiPromise = null;
+
+function api() {
+  if (apiPromise) return apiPromise;
+  apiPromise = (async () => {
+    try {
+      const [{ Capacitor }, { LocalNotifications }] = await Promise.all([
+        import("@capacitor/core"),
+        import("@capacitor/local-notifications"),
+      ]);
+      if (!Capacitor?.isNativePlatform?.()) return null;
+      return { Capacitor, LocalNotifications };
+    } catch {
+      return null;
+    }
+  })();
+  return apiPromise;
 }
 
 export async function isNative() {
@@ -247,6 +252,34 @@ export const BATTERY_HINT = {
     "في شاومي كمان: اضغط مطوّلًا على التطبيق في قائمة المهام ← اقفل القفل 🔒",
   ],
 };
+
+// ------------------------------------------------------------
+//  زرار الرجوع في أندرويد
+// ------------------------------------------------------------
+//  من غير التعامل ده، زرار الرجوع بيقفل التطبيق كله — حتى لو
+//  المستخدم واقف في شاشة الدرس وكان قصده يرجع بس. handler بترجّع
+//  true يعني "أنا اتصرّفت"، و false يعني سيب النظام يتصرّف.
+//
+//  (الملف ده بقى بيشيل مساعدات النظام الأصلي عمومًا مش الأذان بس —
+//  @capacitor/app متستورد هنا أصلًا فمفيش داعي لملف تالت.)
+export async function onHardwareBack(handler) {
+  try {
+    const [{ Capacitor }, { App }] = await Promise.all([
+      import("@capacitor/core"),
+      import("@capacitor/app"),
+    ]);
+    if (!Capacitor?.isNativePlatform?.()) return () => {};
+    const sub = await App.addListener("backButton", ({ canGoBack }) => {
+      const handled = handler();
+      if (handled) return;
+      if (canGoBack) window.history.back();
+      else App.exitApp();
+    });
+    return () => sub?.remove?.();
+  } catch {
+    return () => {};
+  }
+}
 
 // ------------------------------------------------------------
 //  الرجوع للواجهة

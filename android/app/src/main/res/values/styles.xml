@@ -13,6 +13,11 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
+        <!-- بتبان في الشريط اللي فوق المحتوى (مكان شريط الحالة) -->
+        <item name="android:windowBackground">@color/iqra_bg</item>
+        <!-- أيقونات شريط الحالة غامقة عشان الخلفية فاتحة. من غير ده
+             الساعة والبطارية بيبقوا أبيض على أبيض = مش باينين. -->
+        <item name="android:windowLightStatusBar">true</item>
     </style>
 
 

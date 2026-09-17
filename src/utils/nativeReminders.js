@@ -30,9 +30,11 @@ import { getCachedTranslations } from "./db.js";
 export const REMINDER_DAYS_AHEAD = 29; // اليوم + ٢٩ = ٣٠ يوم
 
 export const CAPS = {
-  salawat: 60,
-  tasbih: 60,
+  salawat: 50,
+  tasbih: 50,
   adhkar: 30, // ١٥ يوم × نوعين
+  lesson: 15,
+  kahf: 5, // ٥ جُمَع
 };
 
 // ⚠️ المدى ده **لازم** يفضل برّه مدى الأذان.
@@ -68,23 +70,24 @@ export const CHANNELS = {
   },
 };
 
-let cachedApi = null;
-let checked = false;
+// كاش الوعد مش النتيجة — نفس سبب nativeAthan.js بالظبط.
+let apiPromise = null;
 
-async function api() {
-  if (checked) return cachedApi;
-  checked = true;
-  try {
-    const [{ Capacitor }, { LocalNotifications }] = await Promise.all([
-      import("@capacitor/core"),
-      import("@capacitor/local-notifications"),
-    ]);
-    if (!Capacitor?.isNativePlatform?.()) return (cachedApi = null);
-    cachedApi = { Capacitor, LocalNotifications };
-    return cachedApi;
-  } catch {
-    return (cachedApi = null);
-  }
+function api() {
+  if (apiPromise) return apiPromise;
+  apiPromise = (async () => {
+    try {
+      const [{ Capacitor }, { LocalNotifications }] = await Promise.all([
+        import("@capacitor/core"),
+        import("@capacitor/local-notifications"),
+      ]);
+      if (!Capacitor?.isNativePlatform?.()) return null;
+      return { Capacitor, LocalNotifications };
+    } catch {
+      return null;
+    }
+  })();
+  return apiPromise;
 }
 
 export async function isNative() {
@@ -163,14 +166,20 @@ export function slotsFor({
   return out.sort((a, b) => a - b);
 }
 
-// موعد يومي ثابت (الساعة كذا) على مدى الأيام الجاية
-export function dailySlots(hour, { days = REMINDER_DAYS_AHEAD, now = new Date() } = {}) {
+// موعد يومي ثابت (الساعة كذا) على مدى الأيام الجاية.
+// weekday: لو متحدّد، بناخد اليوم ده بس من الأسبوع (٠ = الأحد).
+export function dailySlots(
+  hour,
+  { minute = 0, weekday = null, days = REMINDER_DAYS_AHEAD, now = new Date() } = {}
+) {
   const out = [];
   for (let d = 0; d <= days; d++) {
     const t = new Date(now);
     t.setDate(t.getDate() + d);
-    t.setHours(hour, 0, 0, 0);
-    if (t.getTime() > now.getTime()) out.push(t);
+    t.setHours(hour, minute, 0, 0);
+    if (t.getTime() <= now.getTime()) continue;
+    if (weekday != null && t.getDay() !== weekday) continue;
+    out.push(t);
   }
   return out;
 }
@@ -250,7 +259,7 @@ export async function scheduleDhikrReminders(settings = {}) {
         channelId: CHANNELS.gentle.id,
         autoCancel: true,
         schedule: { at, allowWhileIdle: false },
-        extra: { url: "/?go=more&sub=tasbih", kind: "salawat" },
+        extra: { url: "/?go=home&focus=iqra-tasbih", kind: "salawat" },
       });
     }
     byKind.salawat = slots.length;
@@ -276,10 +285,57 @@ export async function scheduleDhikrReminders(settings = {}) {
         autoCancel: true,
         schedule: { at, allowWhileIdle: false },
         // الضغط بيفتح العدّاد على الذِّكر ده بالتحديد
-        extra: { url: `/?go=more&sub=tasbih&dhikr=${d.id}`, kind: "tasbih", dhikr: d.id },
+        extra: { url: `/?go=home&focus=iqra-tasbih&dhikr=${d.id}`, kind: "tasbih", dhikr: d.id },
       });
     }
     byKind.tasbih = slots.length;
+  }
+
+  // ---------- تذكير الدرس ----------
+  //  ⚠️ ده كان بيعدّي على showNotification() بتاعة الويب، ودي
+  //  بتفحص Notification.permission — وWebView أندرويد مافيهاش
+  //  window.Notification خالص. فالدالة كانت بترجّع false بهدوء
+  //  والتذكير مابيتبعتش أبدًا في التطبيق الأصلي. المستخدم بيظبّط
+  //  «ميعاد الدرس ٧:٠٠م» ومايجيلوش حاجة ولا رسالة خطأ.
+  const les = settings.lesson || {};
+  if (les.enabled) {
+    const slots = dailySlots(les.hour ?? 19, { minute: les.minute ?? 0 }).slice(
+      0,
+      CAPS.lesson
+    );
+    for (const at of slots) {
+      if (i >= ID_SPAN) break;
+      list.push({
+        id: nextId(),
+        title: "وقت الدرس 📖",
+        body: "خمس دقايق بس تفرق — تعالى نكمّل.",
+        channelId: CHANNELS.adhkar.id,
+        autoCancel: true,
+        schedule: { at, allowWhileIdle: true },
+        extra: { url: "/?go=lesson", kind: "lesson" },
+      });
+    }
+    byKind.lesson = slots.length;
+  }
+
+  // ---------- سورة الكهف — الجمعة ----------
+  const kahf = settings.kahf || {};
+  if (kahf.enabled) {
+    // ٥ = الجمعة (٠ = الأحد)
+    const slots = dailySlots(kahf.hour ?? 6, { weekday: 5 }).slice(0, CAPS.kahf);
+    for (const at of slots) {
+      if (i >= ID_SPAN) break;
+      list.push({
+        id: nextId(),
+        title: "🌅 اقرأ سورة الكهف",
+        body: "الجمعة النهاردة — من قرأ سورة الكهف نُوِّر له ما بين الجمعتين.",
+        channelId: CHANNELS.adhkar.id,
+        autoCancel: true,
+        schedule: { at, allowWhileIdle: true },
+        extra: { url: "/?go=quran&surah=18", kind: "kahf" },
+      });
+    }
+    byKind.kahf = slots.length;
   }
 
   // ---------- أذكار الصباح والمساء ----------
@@ -353,23 +409,33 @@ export async function onNativeNotificationTap(handler) {
 }
 
 // للتجربة: تذكير بالذِّكر بعد ثواني قليلة
-export async function testDhikr(afterSeconds = 5) {
+export async function testNotification({
+  title = "تذكير تجريبي",
+  body = "لو شفت ده، التذكيرات شغّالة ✅",
+  url = "/?go=home",
+  gentle = true,
+  afterSeconds = 5,
+} = {}) {
   const a = await api();
   if (!a) return false;
   await ensureChannels();
   try {
+    // بنطلب الإذن هنا كمان: ممكن يكون المستخدم فعّل المفاتيح من غير
+    // ما يوافق على الإشعارات، فالتجربة تفضل صامتة من غير ما يعرف ليه.
+    const perm = await a.LocalNotifications.requestPermissions();
+    if (perm?.display !== "granted") return false;
     await a.LocalNotifications.schedule({
       notifications: [
         {
           id: BASE_ID + ID_SPAN - 1,
-          title: "صلِّ على النبي ﷺ",
-          body: SALAWAT_TEXT,
-          largeBody: SALAWAT_TEXT,
-          summaryText: "تذكير تجريبي",
-          channelId: CHANNELS.gentle.id,
+          title,
+          body,
+          largeBody: body,
+          summaryText: "تجربة",
+          channelId: gentle ? CHANNELS.gentle.id : CHANNELS.adhkar.id,
           autoCancel: true,
-          schedule: { at: new Date(Date.now() + afterSeconds * 1000) },
-          extra: { url: "/?go=more&sub=tasbih", kind: "test" },
+          schedule: { at: new Date(Date.now() + afterSeconds * 1000), allowWhileIdle: true },
+          extra: { url, kind: "test" },
         },
       ],
     });
@@ -377,4 +443,16 @@ export async function testDhikr(afterSeconds = 5) {
   } catch {
     return false;
   }
+}
+
+// تذكير بالذِّكر بالنص الحقيقي مش برسالة تجريبية، عشان المستخدم
+// يشوف الشكل اللي هيوصله فعلًا
+export async function testDhikr(afterSeconds = 5) {
+  return testNotification({
+    title: "صلِّ على النبي ﷺ",
+    body: SALAWAT_TEXT,
+    url: "/?go=home&focus=iqra-tasbih",
+    gentle: true,
+    afterSeconds,
+  });
 }

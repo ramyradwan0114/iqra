@@ -121,6 +121,12 @@ export default function SettingsPanel({ settings, onChange, toArabicDigits }) {
         onChange={(n) => onChange({ notifications: n })}
         toArabicDigits={toArabicDigits}
       />
+
+      {/* ختم البناء — مش زينة. لما نصلّح حاجة وتفضل ظاهرة، الرقم ده
+          بيفرّق فورًا بين «الإصلاح مانفعش» و«الجهاز شغّال نسخة قديمة». */}
+      <p className="text-[10px] text-[#A79E86] text-center pt-2" dir="ltr">
+        build {typeof __IQRA_BUILD__ !== "undefined" ? __IQRA_BUILD__ : "dev"}
+      </p>
     </div>
   );
 }

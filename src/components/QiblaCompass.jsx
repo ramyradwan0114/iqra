@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation } from "../hooks/usePrayerTimes.js";
 import { qiblaBearing, CITIES } from "../utils/prayerTimes.js";
 
@@ -12,17 +12,36 @@ export default function QiblaCompass({ toArabicDigits }) {
 
   const bearing = loc ? qiblaBearing(loc.lat, loc.lng) : null;
 
+  // ⚠️ إصلاح مهم: إحنا مشتركين في حدثين —
+  //   deviceorientationabsolute → alpha محسوبة من الشمال الحقيقي ✅
+  //   deviceorientation         → alpha نسبية، صفرها عشوائي حسب وضع
+  //                               الجهاز أول ما الحسّاس اشتغل ❌
+  //
+  // الاتنين كانوا بيروحوا لنفس الدالة، والحدثين بيتبادلوا. فالقراءة
+  // النسبية كانت بتدوس على القراءة المطلقة عدّة مرات في الثانية —
+  // السهم بيرقص والتحذير «بوصلتك نسبية» بيظهر حتى لو الجهاز بيدّي
+  // قراءة مطلقة سليمة.
+  //
+  // دلوقتي: أول ما نشوف قراءة مطلقة، بنتجاهل النسبية نهائيًا.
+  const sawAbsolute = useRef(false);
+
   const onOrient = useCallback((e) => {
     // iOS بيدّي webkitCompassHeading جاهز (من الشمال المغناطيسي)
     if (typeof e.webkitCompassHeading === "number") {
+      sawAbsolute.current = true;
       setHeading(e.webkitCompassHeading);
       setAbsolute(true);
       return;
     }
     if (e.alpha == null) return;
+
+    const isAbsolute = e.absolute === true || e.type === "deviceorientationabsolute";
+    if (isAbsolute) sawAbsolute.current = true;
+    else if (sawAbsolute.current) return; // عندنا مصدر أحسن، مانقبلش الأقل
+
     // alpha بيلف عكس عقارب الساعة، فبنعكسه
     setHeading((360 - e.alpha) % 360);
-    setAbsolute(!!e.absolute);
+    setAbsolute(isAbsolute);
   }, []);
 
   const start = useCallback(async () => {

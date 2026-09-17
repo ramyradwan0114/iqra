@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- خلفية النافذة: دي اللي بتبان في الشريط اللي فوق المحتوى بعد
+         ما MainActivity تحشي مكان شريط الحالة. لازم تطابق متغيّر
+         iqra-bg في src/index.css وإلا هيبان شريط بلون مختلف فوق.
+
+         ملاحظة: ممنوع حرفين شَرطة ورا بعض جوّه تعليقات XML. -->
+    <color name="iqra_bg">#F5F0E8</color>
+</resources>

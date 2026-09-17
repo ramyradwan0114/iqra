@@ -54,9 +54,11 @@ import {
   requestPermission as askAthanPerm,
   scheduleAthanForDays,
   onAppResume,
+  onHardwareBack,
 } from "./utils/nativeAthan.js";
 import { MUEZZINS, DEFAULT_ATHAN } from "./utils/athan.js";
 import { computeTimes } from "./utils/prayerTimes.js";
+import { probeArabicVoice, speakNative, openInstallVoices } from "./utils/nativeSpeech.js";
 import { dayIndex, dayKey as quizDayKey } from "./utils/dailyQuiz.js";
 import { parseLink, clearLinkParams, onServiceWorkerNavigate } from "./utils/deepLink.js";
 import { useKhatma } from "./hooks/useQuranJournal.js";
@@ -107,12 +109,102 @@ function useQuranFonts() {
   return ready;
 }
 // ============================================================
+//  قوائم التبويبات الفرعية
+// ------------------------------------------------------------
+//  كانت ١٦ زر في صف واحد تحت «المزيد»، كلهم بنفس الحجم والوزن
+//  ومن غير أي ترتيب — حيطة بتتقري مرة واحدة ومحدش بيلاقي اللي
+//  عايزه. وكانوا بيفضلوا ظاهرين حتى وإنت جوّه شاشة منهم.
+//
+//  التقسيم هنا مبني على سؤال واحد: **الحاجة دي بتخصّ إيه؟**
+//   • علاماتي بتخصّ المصحف  → راحت لتبويب القرآن
+//   • الحفظ والمسمّع والتجويد ومدرّب التلاوة وتدريب الصوت
+//     واقرأ بثقة كلهم تمارين → راحوا لتبويب تعلّم
+//   • الباقي فعلًا «مزيد»، ومتقسّم لتلات مجموعات
+//
+//  كل مفتاح لازم يكون في تبويب واحد بس — التبويب بيمسح الشاشة
+//  الفرعية المفتوحة، فمفيش لبس.
+const SUB_MENUS = {
+  more: [
+    {
+      title: "العبادة",
+      items: [
+        ["prayer", "المواقيت", "🕌"],
+        ["muazzin", "المؤذّن", "🔊"], // كانت مكتوبة «الموذّن»
+        ["adhkar", "الأذكار", "📿"],
+        ["hijri", "التقويم", "🗓️"],
+      ],
+    },
+    {
+      title: "متابعة",
+      items: [
+        ["daily", "المسابقة", "🏅"],
+        ["groups", "مجموعاتي", "👥"],
+      ],
+    },
+    {
+      title: "التطبيق",
+      items: [
+        ["settings", "الإعدادات", "⚙️"],
+        ["share", "شارك", "📤"],
+        ["teacher", "المعلّم", "🔐"],
+      ],
+    },
+  ],
+  quran: [{ title: null, items: [["bookmarks", "علاماتي", "🔖"]] }],
+  learn: [
+    {
+      title: "تمارين",
+      items: [
+        ["tasmee3", "المسمّع", "🎤"],
+        ["hifz", "الحفظ", "🧠"],
+        ["tajweed", "التجويد", "◌ّ"],
+        ["coach", "مدرّب التلاوة", "🎙️"],
+        ["vocal", "تدريب الصوت", "🫁"],
+        ["confidence", "اقرأ بثقة", "🪞"],
+      ],
+    },
+  ],
+};
+
+// عنوان الشاشة الفرعية المفتوحة — للزر الراجع
+const SUB_TITLES = Object.fromEntries(
+  Object.values(SUB_MENUS)
+    .flat()
+    .flatMap((g) => g.items)
+    .map(([k, label, icon]) => [k, `${icon} ${label}`])
+);
+
+// ============================================================
 //  الصوت العربي (النطق)
 // ============================================================
 function useArabicVoice() {
   const [voice, setVoice] = useState(null);
   const [status, setStatus] = useState("checking");
+  // "native" يعني بنكلّم محرّك أندرويد مباشرة. WebView بيخبّي أصوات
+  // النظام عن صفحة الويب، فالمسار القديم كان بيقول "مفيش صوت عربي"
+  // حتى للأجهزة اللي عندها صوت عربي شغّال.
+  const [nativeTTS, setNativeTTS] = useState(false);
+  // السبب الحقيقي من الجهاز — بيتعرض في التحذير بدل ما نخمّن
+  const [reason, setReason] = useState(null);
+
   useEffect(() => {
+    let alive = true;
+    (async () => {
+      const probe = await probeArabicVoice();
+      if (!alive) return;
+      setReason(probe.reason || null);
+      if (!probe.available) return;
+      setNativeTTS(true);
+      setVoice(probe.lang ? { lang: probe.lang } : null);
+      setStatus(probe.arabic ? "ready" : "missing");
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (nativeTTS) return; // المسار الأصلي شغّال، مش محتاجين المتصفّح
     if (typeof window === "undefined" || !("speechSynthesis" in window)) {
       setStatus("unsupported");
       return;
@@ -138,10 +230,16 @@ function useArabicVoice() {
       window.speechSynthesis.removeEventListener("voiceschanged", onChange);
       clearTimeout(t);
     };
-  }, []);
+  }, [nativeTTS]);
+
   const speak = useCallback(
     (text) => {
-      if (!("speechSynthesis" in window) || status !== "ready") return false;
+      if (status !== "ready") return false;
+      if (nativeTTS) {
+        speakNative(text, { lang: voice?.lang || "ar-EG", rate: 0.7 });
+        return true;
+      }
+      if (!("speechSynthesis" in window)) return false;
       window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
       u.lang = voice?.lang || "ar-SA";
@@ -150,9 +248,9 @@ function useArabicVoice() {
       window.speechSynthesis.speak(u);
       return true;
     },
-    [voice, status]
+    [voice, status, nativeTTS]
   );
-  return { speak, status };
+  return { speak, status, native: nativeTTS, reason };
 }
 // ============================================================
 //  اسم الطالب
@@ -557,20 +655,39 @@ function LevelCard({ level, active, locked, done, onClick }) {
     </button>
   );
 }
-function VoiceWarning({ status }) {
+function VoiceWarning({ status, native, reason }) {
   if (status === "ready" || status === "checking") return null;
   return (
     <div className="rounded-2xl bg-[#FBF3E2] border border-[#D4A853] px-5 py-4 text-sm text-[#6B5A2E] mb-6">
       <strong className="block mb-1">النطق الآلي غير متاح على هذا الجهاز</strong>
       {status === "unsupported"
         ? "المتصفح لا يدعم النطق الآلي."
-        : "لا يوجد صوت عربي مثبّت، فزر النطق لن يُصدر صوتًا."}{" "}
+        : "مفيش صوت عربي متثبّت على الجهاز، فزرار النطق مش هيطلّع صوت."}{" "}
       الدروس والاختبارات تعمل بالكامل بدونه (نعتمد على اسم الحرف مكتوبًا).
-      لتفعيل الصوت: ثبّت حزمة اللغة العربية من إعدادات الجهاز (النطق / Text-to-speech).
+      {/* في التطبيق الأصلي نقدر نوّدي المستخدم للشاشة الصح مباشرة
+          بدل ما نقوله "روح الإعدادات" ونسيبه يدوّر. */}
+      {native && status === "missing" ? (
+        <button
+          onClick={() => openInstallVoices()}
+          className="mt-3 block px-4 py-2 rounded-xl bg-[#1B4D3E] text-[#F5F0E8] text-xs font-bold"
+        >
+          ثبّت صوتًا عربيًا
+        </button>
+      ) : (
+        <> لتفعيل الصوت: ثبّت حزمة اللغة العربية من إعدادات الجهاز (النطق / Text-to-speech).</>
+      )}
       <br />
       <span className="text-[#8A7A4E]">
         تبويب المصحف التفاعلي غير متأثر — صوته تلاوة حقيقية مسجّلة، مش نطق آلي.
       </span>
+      {/* السبب الحقيقي من الجهاز. مش زينة — ده اللي بيفرّق بين
+          «مفيش صوت عربي» و«الإضافة نفسها مش بتتحمّل»، وهما محتاجين
+          حلّين مختلفين تمامًا. */}
+      {reason && (
+        <span className="block text-[10px] text-[#A79E86] mt-2" dir="auto">
+          التشخيص: {reason}
+        </span>
+      )}
     </div>
   );
 }
@@ -2052,7 +2169,12 @@ function Quiz({ lesson, onPass, onRetry, speak, voiceReady, fontsReady, onAnswer
   const [writeResult, setWriteResult] = useState(null);
   const [writeAttempt, setWriteAttempt] = useState(0);
   const q = questions[idx];
-  const inWritePhase = questions.length > 0 && idx >= questions.length && !!writeTarget;
+  // ⚠️ كان `idx >= questions.length` وده **بيحبس المستخدم**.
+  // الأسئلة بتاخد idx من ٠ لـ n-1، وسؤال الكتابة idx = n، والنتيجة
+  // idx = n+1. لكن `>=` بتفضل صح عند n+1 كمان — فالضغط على «إنهاء
+  // الاختبار» كان بيزوّد idx فعلًا، وبعدين نفس شاشة الكتابة بترجع
+  // تترسم. الزر شغّال، بس النتيجة مستحيل توصلها.
+  const inWritePhase = questions.length > 0 && idx === questions.length && !!writeTarget;
   useEffect(() => {
     if (lesson.quiz !== "recall" || !q) return;
     setPeek(true);
@@ -2231,7 +2353,7 @@ function Quiz({ lesson, onPass, onRetry, speak, voiceReady, fontsReady, onAnswer
 // ============================================================
 function LessonView({ audience, levelId, onClose, onComplete, fontsReady, learning }) {
   const baseLesson = LESSONS[audience][levelId];
-  const { speak, status } = useArabicVoice();
+  const { speak, status, native: ttsNative, reason: ttsReason } = useArabicVoice();
 
   // التكرار المتباعد: الحروف اللي غلط فيها وحان وقت مراجعتها تتقدّم لأول
   // الدرس. الترتيب بيتحسب مرة واحدة عند فتح الدرس عشان مايتغيّرش تحت إيده.
@@ -2299,6 +2421,9 @@ function LessonView({ audience, levelId, onClose, onComplete, fontsReady, learni
     setStep(0);
     setPhase("write");
   };
+  // والقفز للاختبار من غير ما يكمل الكتابة — اللي عارف الحروف
+  // مايتحبسش في ٣٣ تمرين رسم عشان يوصل للاختبار
+  const skipToQuiz = () => setPhase("quiz");
   // نهاية القراءة → الكتابة (من أول عنصر تاني)، ونهاية الكتابة → الاختبار
   const advance = () => {
     if (step + 1 < total) {
@@ -2319,7 +2444,18 @@ function LessonView({ audience, levelId, onClose, onComplete, fontsReady, learni
       ? "انتقل للكتابة"
       : "ابدأ الاختبار";
   return (
-    <div className="fixed inset-0 bg-[#F5F0E8] z-50 flex flex-col overflow-y-auto" dir="rtl">
+    // ⚠️ الحشو التحت لازم يساوي ارتفاع شريط التنقّل على الأقل.
+    // من غيره، آخر حاجة في الشاشة بتقع تحت الشريط — وده اللي خلّى
+    // زر «التالي» يبان مقصوص و«تخطّى القراءة ← اكتب على طول»
+    // يختفي تمامًا، فالمستخدم افتكر إن الزر اتشال من التطبيق.
+    // ٤٫٢٥rem ارتفاع الشريط في BottomNav.jsx + هامش.
+    <div
+      className="fixed inset-0 bg-[#F5F0E8] z-50 flex flex-col overflow-y-auto"
+      dir="rtl"
+      style={{
+        paddingBottom: "calc(4.25rem + env(safe-area-inset-bottom, 0px) + 1.5rem)",
+      }}
+    >
       <audio ref={ayahAudioRef} preload="none" />
       <div className="max-w-3xl w-full mx-auto px-6 py-5 flex items-center justify-between">
         <button onClick={onClose} className="text-[#5B6B62] text-sm font-semibold">
@@ -2360,7 +2496,7 @@ function LessonView({ audience, levelId, onClose, onComplete, fontsReady, learni
 
       {phase === "read" && (
         <div className="max-w-3xl w-full mx-auto px-6 pt-3">
-          <VoiceWarning status={status} />
+          <VoiceWarning status={status} native={ttsNative} reason={ttsReason} />
         </div>
       )}
 
@@ -2428,12 +2564,20 @@ function LessonView({ audience, levelId, onClose, onComplete, fontsReady, learni
               resetKey={step}
             />
             {step + 1 < total ? (
-              <button
-                onClick={advance}
-                className="bg-[#1B4D3E] text-[#F5F0E8] px-8 py-3 rounded-xl font-bold"
-              >
-                {nextLabel}
-              </button>
+              <div className="flex flex-col items-center gap-3">
+                <button
+                  onClick={advance}
+                  className="bg-[#1B4D3E] text-[#F5F0E8] px-8 py-3 rounded-xl font-bold"
+                >
+                  {nextLabel}
+                </button>
+                <button
+                  onClick={skipToQuiz}
+                  className="text-sm text-[#1B4D3E] font-semibold underline underline-offset-4"
+                >
+                  تخطّى الكتابة ← الاختبار على طول
+                </button>
+              </div>
             ) : (
               // الاختبار بقى اختياري — يقدر ينهي الدرس من غيره
               <div className="flex flex-col items-center gap-3">
@@ -2514,7 +2658,7 @@ export default function App() {
       const shown = await showNotification(SALAWAT_NOTIF.title, {
         body: SALAWAT_NOTIF.body,
         tag: "iqra-salawat",
-        data: { url: "/?go=more&sub=tasbih" },
+        data: { url: "/?go=home&focus=iqra-tasbih" },
       });
       if (!shown)
         showToast("ﷺ " + SALAWAT_NOTIF.body + " — دوس للعدّاد", () => {
@@ -2617,6 +2761,15 @@ export default function App() {
         enabled: !!(notifForSchedule.enabled && notifForSchedule.evening),
         hour: NOTIF_KINDS.evening.hour,
       },
+      lesson: {
+        enabled: !!(notifForSchedule.enabled && notifForSchedule.lesson),
+        hour: notifForSchedule.hour ?? 19,
+        minute: notifForSchedule.minute ?? 0,
+      },
+      kahf: {
+        enabled: !!(notifForSchedule.enabled && notifForSchedule.kahf),
+        hour: NOTIF_KINDS.kahf.hour,
+      },
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -2631,6 +2784,10 @@ export default function App() {
     notifForSchedule.enabled,
     notifForSchedule.morning,
     notifForSchedule.evening,
+    notifForSchedule.lesson,
+    notifForSchedule.kahf,
+    notifForSchedule.hour,
+    notifForSchedule.minute,
   ]);
 
   // ---------- محرّك التذكيرات ----------
@@ -2654,9 +2811,11 @@ export default function App() {
       if (stopped) return;
       const live = notifRef.current; // أحدث إعدادات مش المحفوظة في الإغلاق
       let due = dueReminders(live, { lastActiveDay: streakDayRef.current });
-      // أذكار الصباح والمساء متجدولة على مستوى النظام في التطبيق
-      // الأصلي — لو سبناها هنا كمان هتظهر مرتين.
-      if (dhikrNative) due = due.filter((k) => k !== "morning" && k !== "evening");
+      // اللي بيتجدول على مستوى النظام في التطبيق الأصلي مايتبعتش
+      // من هنا كمان، وإلا هيظهر مرتين. الباقي (السلسلة وسورة اليوم)
+      // بيعتمد على حالة وقت التشغيل فبيفضل هنا.
+      if (dhikrNative)
+        due = due.filter((k) => !["morning", "evening", "lesson", "kahf"].includes(k));
       if (!due.length) return;
 
       const today = quizDayKey();
@@ -2739,6 +2898,14 @@ export default function App() {
           setLessonOpen(true);
         }, 300);
       }
+      // ننزل على العنصر المقصود بعد ما التبويب يترسم
+      if (l.focus) {
+        setTimeout(() => {
+          document
+            .getElementById(l.focus)
+            ?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 350);
+      }
       clearLinkParams();
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2796,6 +2963,39 @@ export default function App() {
   const doneIds = progress[audience];
   const isLocked = (id) => id !== 1 && !doneIds.includes(id - 1);
   const currentLocked = isLocked(levelId);
+
+  // زرار الرجوع: يقفل اللي مفتوح فوق الأول، وما يخرجش من التطبيق
+  // إلا لو مفيش حاجة مفتوحة. الترتيب من الأعلى للأسفل.
+  const lessonOpenRef = useRef(false);
+  lessonOpenRef.current = lessonOpen;
+  const tabRef = useRef(tab);
+  tabRef.current = tab;
+  const subMoreRef = useRef(subMore);
+  subMoreRef.current = subMore;
+  useEffect(() => {
+    let off = () => {};
+    let cancelled = false;
+    onHardwareBack(() => {
+      if (lessonOpenRef.current) {
+        setLessonOpen(false);
+        return true;
+      }
+      if (subMoreRef.current) {
+        setSubMore(null);
+        return true;
+      }
+      if (tabRef.current !== "home") {
+        setTab("home");
+        return true;
+      }
+      return false; // مفيش حاجة مفتوحة → النظام يخرج من التطبيق
+    }).then((f) => (cancelled ? f() : (off = f)));
+    return () => {
+      cancelled = true;
+      off();
+    };
+  }, []);
+
   useEffect(() => {
     if (isLocked(levelId)) {
       const firstOpen = levels.find((l) => !isLocked(l.id));
@@ -2896,43 +3096,49 @@ export default function App() {
       */}
       <main className="max-w-3xl mx-auto px-5 pt-6 iqra-page">
         {/* تبويبات فرعية للمجموعات المركّبة */}
-        {tab === "more" && (
-          <div className="flex flex-wrap gap-2 mb-7">
-            {[
-              ["prayer", "المواقيت", "🕌"],
-              ["muazzin", "الموذّن", "🔊"],
-              ["hijri", "التقويم", "🗓️"],
-              ["coach", "مدرّب التلاوة", "🎙️"],
-              ["vocal", "تدريب الصوت", "🫁"],
-              ["confidence", "اقرأ بثقة", "🪞"],
-              ["adhkar", "الأذكار", "📿"],
-              ["bookmarks", "علاماتي", "🔖"],
-              ["tasmee3", "المسمّع", "🎤"],
-              ["hifz", "الحفظ", "🧠"],
-              ["tajweed", "التجويد", "◌ّ"],
-              ["daily", "المسابقة", "🏅"],
-              ["groups", "مجموعاتي", "👥"],
-              ["teacher", "المعلّم", "🔐"],
-              ["share", "شارك", "📤"],
-              ["settings", "الإعدادات", "⚙️"],
-            ].map(([key, label, icon]) => (
-              <button
-                key={key}
-                onClick={() => setSubMore(key)}
-                className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-colors flex items-center gap-1.5 ${
-                  subMore === key
-                    ? "bg-[#1B4D3E] border-[#1B4D3E] text-[#F5F0E8]"
-                    : "iqra-card border-transparent text-[#5B6B62] dark:text-[#A9BDB2]"
-                }`}
-              >
-                <span aria-hidden="true">{icon}</span>
-                {label}
-              </button>
-            ))}
-          </div>
+        {/* الشاشة الفرعية مفتوحة → زر راجع بس. القائمة كانت بتفضل
+            ظاهرة فوق المحتوى، فالمستخدم يفضل شايف الحيطة طول الوقت
+            ومش فاهم هو فين. */}
+        {subMore && (
+          <button
+            onClick={() => setSubMore(null)}
+            className="flex items-center gap-2 mb-5 text-sm font-semibold text-[#5B6B62] dark:text-[#A9BDB2]"
+          >
+            <span aria-hidden="true">→</span>
+            <span className="text-[#1B4D3E] dark:text-[#D4A853]">
+              {SUB_TITLES[subMore] || "رجوع"}
+            </span>
+          </button>
         )}
 
-        {tab === "home" && (
+        {/* القائمة المقسّمة — بتظهر لما مفيش شاشة فرعية مفتوحة.
+            في «تعلّم» بتتعرض **تحت** المحتوى: الدرس هو الأهم في
+            التبويب ده، وست أزرار تمارين فوقه هتزحلقه برّه الشاشة. */}
+        {!subMore &&
+          tab !== "learn" &&
+          (SUB_MENUS[tab] || []).map((group) => (
+            <div key={group.title || "_"} className="mb-6">
+              {group.title && (
+                <h3 className="text-[11px] font-bold text-[#8A7A4E] mb-2.5 px-1">
+                  {group.title}
+                </h3>
+              )}
+              <div className="flex flex-wrap gap-2">
+                {group.items.map(([key, label, icon]) => (
+                  <button
+                    key={key}
+                    onClick={() => setSubMore(key)}
+                    className="px-4 py-2.5 rounded-xl text-sm font-semibold border border-transparent iqra-card text-[#5B6B62] dark:text-[#A9BDB2] flex items-center gap-1.5 active:scale-95 transition-transform"
+                  >
+                    <span aria-hidden="true">{icon}</span>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+
+        {tab === "home" && !subMore && (
           <HomeScreen
             name={name}
             streak={streak}
@@ -2955,10 +3161,10 @@ export default function App() {
           />
         )}
 
-        {tab === "qibla" && <QiblaCompass toArabicDigits={toArabicDigits} />}
+        {tab === "qibla" && !subMore && <QiblaCompass toArabicDigits={toArabicDigits} />}
 
         {/* هدف اليوم + عدّاد التسبيح — تحت الهيدر في الشاشة الرئيسية */}
-        {tab === "learn" && (
+        {tab === "learn" && !subMore && (
           <>
             <DailyGoal
               tasbih={tasbih}
@@ -2972,15 +3178,18 @@ export default function App() {
                 }
               }}
             />
-            <TasbihCounter
-              toArabicDigits={toArabicDigits}
-              onChange={setTasbih}
-              onToast={showToast}
-            />
+            {/* المعرّف ده وجهة إشعارات التسبيح والصلاة على النبي */}
+            <div id="iqra-tasbih" style={{ scrollMarginTop: "1rem" }}>
+              <TasbihCounter
+                toArabicDigits={toArabicDigits}
+                onChange={setTasbih}
+                onToast={showToast}
+              />
+            </div>
           </>
         )}
 
-        {tab === "learn" && (
+        {tab === "learn" && !subMore && (
           <>
             <div className="flex gap-2 mb-8">
               {[
@@ -3046,7 +3255,35 @@ export default function App() {
             </div>
           </>
         )}
-        {tab === "quran" && (
+
+        {/* تمارين تعلّم — تحت الدرس مش فوقه */}
+        {tab === "learn" && !subMore && (
+          <div className="mt-8 pt-6 border-t border-[#E4DCC3] dark:border-[#3A5148]">
+            {SUB_MENUS.learn.map((group) => (
+              <div key={group.title || "_"}>
+                {group.title && (
+                  <h3 className="text-[11px] font-bold text-[#8A7A4E] mb-2.5 px-1">
+                    {group.title}
+                  </h3>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  {group.items.map(([key, label, icon]) => (
+                    <button
+                      key={key}
+                      onClick={() => setSubMore(key)}
+                      className="px-4 py-2.5 rounded-xl text-sm font-semibold border border-transparent iqra-card text-[#5B6B62] dark:text-[#A9BDB2] flex items-center gap-1.5 active:scale-95 transition-transform"
+                    >
+                      <span aria-hidden="true">{icon}</span>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {tab === "quran" && !subMore && (
           <>
             {/*
               عرضان للمصحف، والاختيار محفوظ:
@@ -3096,14 +3333,14 @@ export default function App() {
           </>
         )}
 
-        {tab === "more" && subMore === "prayer" && (
+        {subMore === "prayer" && (
           <PrayerTimes
             settings={settings}
             onChange={updateSettings}
             toArabicDigits={toArabicDigits}
           />
         )}
-                {tab === "more" && subMore === "muazzin" && (
+                {subMore === "muazzin" && (
           <Muazzin
             settings={settings}
             onChange={updateSettings}
@@ -3112,11 +3349,11 @@ export default function App() {
           />
         )}
 
-        {tab === "more" && subMore === "hijri" && (
+        {subMore === "hijri" && (
           <IslamicCalendar toArabicDigits={toArabicDigits} />
         )}
 
-        {tab === "more" && subMore === "coach" && (
+        {subMore === "coach" && (
           <AITajweedCoach
             loadTimings={loadSurahTimings}
             toArabicDigits={toArabicDigits}
@@ -3124,15 +3361,15 @@ export default function App() {
           />
         )}
 
-        {tab === "more" && subMore === "vocal" && <VocalTrainer />}
-        {tab === "more" && subMore === "confidence" && (
+        {subMore === "vocal" && <VocalTrainer />}
+        {subMore === "confidence" && (
           <ConfidenceMode toArabicDigits={toArabicDigits} />
         )}
-        {tab === "more" && subMore === "adhkar" && (
+        {subMore === "adhkar" && (
           <AdhkarScreen toArabicDigits={toArabicDigits} />
         )}
 
-        {tab === "more" && subMore === "bookmarks" && (
+        {subMore === "bookmarks" && (
           <BookmarksList
             toArabicDigits={toArabicDigits}
             onOpen={(page) => {
@@ -3142,13 +3379,13 @@ export default function App() {
           />
         )}
 
-        {tab === "more" && subMore === "tasmee3" && (
+        {subMore === "tasmee3" && (
           <Tasmee3Screen toArabicDigits={toArabicDigits} surahs={SURAHS} />
         )}
 
-        {tab === "more" && subMore === "hifz" && <HifzMode toArabicDigits={toArabicDigits} />}
+        {subMore === "hifz" && <HifzMode toArabicDigits={toArabicDigits} />}
 
-        {tab === "more" && subMore === "tajweed" && (
+        {subMore === "tajweed" && (
           <div className="flex flex-col gap-6">
             <div>
               <h2 className="text-xl font-bold text-[#1B4D3E] dark:text-[#D4A853]">
@@ -3162,7 +3399,7 @@ export default function App() {
           </div>
         )}
 
-        {tab === "more" && subMore === "daily" && (
+        {subMore === "daily" && (
           <DailyChallenge
             SURAHS={SURAHS}
             SHORT={SHORT_SURAHS}
@@ -3171,7 +3408,7 @@ export default function App() {
           />
         )}
 
-        {tab === "more" && subMore === "settings" && (
+        {subMore === "settings" && (
           <SettingsPanel
             settings={settings}
             onChange={updateSettings}
@@ -3179,7 +3416,7 @@ export default function App() {
           />
         )}
 
-        {tab === "more" && subMore === "groups" && (
+        {subMore === "groups" && (
           <StudyGroup
             student={{
               id: deviceId,
@@ -3192,9 +3429,9 @@ export default function App() {
           />
         )}
 
-        {tab === "more" && subMore === "share" && <ShareApp onToast={showToast} />}
+        {subMore === "share" && <ShareApp onToast={showToast} />}
 
-        {tab === "more" && subMore === "teacher" && (
+        {subMore === "teacher" && (
           <TeacherMode toArabicDigits={toArabicDigits} />
         )}
       </main>
@@ -3263,7 +3500,21 @@ export default function App() {
         />
       )}
 
-      <BottomNav tab={tab} onChange={setTab} />
+      {/* ⚠️ لازم الدرس يتقفل مع تغيير التبويب.
+          LessonView و BottomNav الاتنين z-50، والشريط بيترسم بعده في
+          الـ DOM فبيبقى فوقه ولمساته بتوصل. النتيجة كانت إن التبويب
+          بيتغيّر فعلًا (المؤشر بيتحرّك) لكن الدرس فاضل مغطّي الشاشة —
+          فالتطبيق بيبان واقف تمامًا والمستخدم محبوس. */}
+      <BottomNav
+        tab={tab}
+        onChange={(t) => {
+          setLessonOpen(false);
+          // الشاشة الفرعية بتتقفل مع تغيير التبويب. من غير ده، مفتاح
+          // زي "hifz" بتاع تبويب تعلّم يفضل مفتوح وإنت في تبويب تاني.
+          setSubMore(null);
+          setTab(t);
+        }}
+      />
 
       {/* الترحيب الأول بقى onboarding كامل بدل حوار الاسم لوحده.
           حوار الاسم فضل موجود للتعديل بعد كده من الهيدر. */}

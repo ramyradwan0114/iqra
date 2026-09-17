@@ -7,7 +7,8 @@ import {
   requestPermission,
   showNotification,
 } from "../utils/notifications.js";
-import { isNative, testDhikr } from "../utils/nativeReminders.js";
+import { isNative, testDhikr, testNotification } from "../utils/nativeReminders.js";
+import { requestPermission as askNativePerm } from "../utils/nativeAthan.js";
 
 export default function NotificationSettings({ settings, onChange, toArabicDigits }) {
   const s = { ...DEFAULT_NOTIF_SETTINGS, ...(settings || {}) };
@@ -17,12 +18,24 @@ export default function NotificationSettings({ settings, onChange, toArabicDigit
   // على التطبيق الأصلي القيود اللي مكتوبة تحت مابتنطبقش — النظام
   // نفسه بيجدول. عرض تحذير مش صحيح أسوأ من عدم عرض أي حاجة.
   const [native, setNative] = useState(false);
+  const [tested, setTested] = useState(null); // soon | sent | failed
   useEffect(() => {
-    isNative().then(setNative);
+    isNative().then(async (n) => {
+      setNative(n);
+      // ⚠️ WebView بتاع أندرويد **مافيهوش** window.Notification خالص.
+      // فـ notificationsSupported() بترجّع false جوّه التطبيق الأصلي،
+      // وكانت بتخبّي كل مفاتيح التذكيرات وتكتب «المتصفح ده مابيدعمش
+      // الإشعارات» — على تطبيق إشعاراته شغّالة فعلًا وبتأذّن.
+      // الإذن الحقيقي هنا بيتاخد من النظام مش من المتصفّح.
+      if (n) setPerm(await askNativePerm());
+    });
   }, []);
 
+  // على الأصلي بنتجاهل فحص المتصفّح تمامًا
+  const usable = native || supported;
+
   const ask = async () => {
-    const p = await requestPermission();
+    const p = native ? await askNativePerm() : await requestPermission();
     setPerm(p);
     if (p === "granted") onChange({ ...s, enabled: true });
   };
@@ -38,7 +51,7 @@ export default function NotificationSettings({ settings, onChange, toArabicDigit
         </p>
       </div>
 
-      {!supported ? (
+      {!usable ? (
         <p className="text-sm text-[#8A4E4E] bg-[#FBEDED] rounded-xl px-4 py-3">
           المتصفح ده مابيدعمش الإشعارات.
         </p>
@@ -145,19 +158,46 @@ export default function NotificationSettings({ settings, onChange, toArabicDigit
               )}
 
               <button
-                onClick={() =>
-                  // لازم data.url — من غيرها الضغط على الإشعار مابيعملش
-                  // حاجة، والـ Service Worker بيروح على "/" ومحدش يلاحظ فرق.
-                  showNotification(NOTIF_KINDS.lesson.title, {
-                    body: "ده تذكير تجريبي ✅ — دوس عليه يوديك للدرس",
-                    tag: "iqra-test",
-                    data: { url: NOTIF_KINDS.lesson.link || "/?go=lesson" },
-                  })
-                }
+                onClick={async () => {
+                  // ⚠️ على التطبيق الأصلي لازم نعدّي على النظام.
+                  // showNotification() بتاعة الويب بتفحص
+                  // Notification.permission، وWebView أندرويد مافيهاش
+                  // window.Notification — فكانت بترجّع false من غير أي
+                  // رسالة والزر يبان ميّت.
+                  const ok = native
+                    ? await testNotification({
+                        title: NOTIF_KINDS.lesson.title,
+                        body: "ده تذكير تجريبي ✅ — دوس عليه يوديك للدرس",
+                        url: NOTIF_KINDS.lesson.link || "/?go=lesson",
+                        gentle: false,
+                        afterSeconds: 5,
+                      })
+                    : await showNotification(NOTIF_KINDS.lesson.title, {
+                        body: "ده تذكير تجريبي ✅ — دوس عليه يوديك للدرس",
+                        tag: "iqra-test",
+                        // لازم data.url — من غيرها الضغط مابيعملش حاجة
+                        data: { url: NOTIF_KINDS.lesson.link || "/?go=lesson" },
+                      });
+                  setTested(ok ? (native ? "soon" : "sent") : "failed");
+                }}
                 className="text-xs text-[#1B4D3E] dark:text-[#8FD6C0] underline self-start"
               >
                 جرّب تذكير دلوقتي
               </button>
+              {/* الزر كان بيرجّع false بصمت. أي نتيجة أحسن من لا نتيجة. */}
+              {tested && (
+                <p
+                  className={`text-[11px] ${
+                    tested === "failed" ? "text-[#8A4E4E]" : "text-[#1B4D3E] dark:text-[#8FD6C0]"
+                  }`}
+                >
+                  {tested === "soon"
+                    ? "هيوصل بعد ٥ ثوانٍ — اقفل التطبيق وجرّب"
+                    : tested === "sent"
+                    ? "اتبعت ✅"
+                    : "متعذّر — اتأكد إن إشعارات التطبيق مسموحة من إعدادات الجهاز"}
+                </p>
+              )}
             </>
           )}
         </>

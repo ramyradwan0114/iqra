@@ -8,7 +8,19 @@ import { VitePWA } from "vite-plugin-pwa";
 // sw.js بنفسه وبيدوس على أي ملف بنفس الاسم. الحل الصح هو strategies:
 // 'injectManifest' — إنت بتكتب الـ SW (src/sw.js) والبلجن بيحقن فيه قائمة
 // الملفات المطلوب تخزينها (self.__WB_MANIFEST). كده الاتنين شغالين مع بعض.
+// ختم البناء: بيتحقن وقت البناء ويتعرض في «المزيد ← الإعدادات».
+// الفايدة العملية: لما نصلّح حاجة وتفضل ظاهرة على الموبايل، الرقم ده
+// بيقول فورًا هل الجهاز شغّال الكود الجديد ولا القديم — بدل ما
+// ندوّر على مشكلة في كود مش متثبّت أصلًا.
+const BUILD_ID = new Date()
+  .toISOString()
+  .slice(0, 16)
+  .replace("T", " ");
+
 export default defineConfig({
+  define: {
+    __IQRA_BUILD__: JSON.stringify(BUILD_ID),
+  },
   plugins: [
     react(),
     VitePWA({
@@ -16,7 +28,15 @@ export default defineConfig({
       strategies: "injectManifest",
       srcDir: "src",
       filename: "sw.js",
-      injectRegister: "auto",
+      // ⚠️ "auto" بيحقن تسجيل الـ Service Worker في index.html من غير
+      // أي شرط — يعني بيشتغل جوّه التطبيق الأصلي كمان. وده ضرر خالص:
+      // التطبيق الأصلي أصلًا بيحمّل ملفاته من جوّه الـAPK (شغّال
+      // أوفلاين بطبيعته)، فالـSW مابيضيفش حاجة — لكنه **بيكاش نسخة
+      // الجافاسكربت**. فلما نبني APK جديد، الـWebView ممكن تفضل
+      // تعرض الكود القديم، وتبان كأن الإصلاح مانفعش.
+      //
+      // null = مافيش حقن، والتسجيل بقى يدوي في main.jsx للويب بس.
+      injectRegister: null,
       includeAssets: [
         "icon-192.png",
         "icon-512.png",

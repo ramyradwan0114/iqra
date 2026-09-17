@@ -39,6 +39,10 @@ export function parseLink(href) {
       level: p.get("level") ? Number(p.get("level")) : null,
       surah: p.get("surah") ? Number(p.get("surah")) : null,
       sub: p.get("sub") || null,
+      // focus: معرّف عنصر في الصفحة ننزل عليه بعد ما نفتحها.
+      // من غيره، إشعار زي «صلِّ على النبي» بيفتح التبويب من فوق
+      // والعدّاد اللي المفروض يوصّله ليه يفضل تحت برّه الشاشة.
+      focus: p.get("focus") || null,
     };
   } catch {
     return null;
@@ -48,7 +52,9 @@ export function parseLink(href) {
 export function clearLinkParams() {
   try {
     const url = new URL(window.location.href);
-    ["go", "audience", "level", "surah", "sub"].forEach((k) => url.searchParams.delete(k));
+    ["go", "audience", "level", "surah", "sub", "focus"].forEach((k) =>
+      url.searchParams.delete(k)
+    );
     window.history.replaceState({}, "", url.pathname + url.search + url.hash);
   } catch {}
 }
