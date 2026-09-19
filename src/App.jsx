@@ -482,7 +482,27 @@ const LESSONS = {
 //
 // الترتيب مقصود: التعليمي الأول لأنه أنسب حاجة لمتعلّم — الحصري
 // بيقرأ فيه ببطء شديد ويفصّل الحروف والمدود، وده أصلًا الغرض منه.
+// ------------------------------------------------------------
+//  القرّاء
+// ------------------------------------------------------------
+//  الأرقام دي من /audio/reciters في Quran.com، واتأكدت من كل واحد
+//  إن عنده verse_timings بمقاطع كلمات قبل ما يتحط هنا — من غيرها
+//  تتبّع الكلمة أثناء التلاوة مابيشتغلش.
+//
+//  ملاحظة: **الشيخ الحذيفي مش موجود في المصدر خالص** (القائمة كلها
+//  ١٤ قارئ). وجلبه من مصدر تاني معناه صوت من غير توقيتات كلمات،
+//  يعني نخسر التتبّع — وده أهم حاجة في المصحف.
+//
+//  «كرّر ورايا»: القارئ بيقرا والطفل بيعيد، فالسورة بتاخد ضعف
+//  الوقت وأرقام الكلمات بتتكرر في المقاطع. التتبّع بيشتغل عادي لأنه
+//  بيدوّر بالوقت مش برقم الكلمة.
 const RECITERS = [
+  {
+    id: "kids",
+    name: "المنشاوي — كرّر ورايا",
+    qdcId: 168,
+    hint: "يقرأ ويسيب لك مساحة تعيد — للأطفال والمبتدئين",
+  },
   { id: "muallim", name: "الحصري — المعلّم", qdcId: 12, hint: "بطيء ومفصّل، للتعلّم" },
   { id: "husary", name: "الشيخ الحصري", qdcId: 6, hint: "مرتّل" },
   { id: "minshawi", name: "الشيخ المنشاوي", qdcId: 9, hint: "مرتّل، تجويد دقيق" },
@@ -655,38 +675,32 @@ function LevelCard({ level, active, locked, done, onClick }) {
     </button>
   );
 }
-function VoiceWarning({ status, native, reason }) {
+// ============================================================
+//  غياب النطق الآلي — ملاحظة مش إنذار
+// ------------------------------------------------------------
+//  ده كان صندوق أصفر كبير بستّة أسطر وعنوان غامق، بيتصدّر الشاشة
+//  فوق الحرف نفسه. والنتيجة إن المستخدم يفتكر إن التطبيق عطلان،
+//  وهو مش عطلان: الدرس والاختبار شغّالين بالكامل، واسم الحرف
+//  مكتوب تحته بخط كبير.
+//
+//  اتجرّب على شاومي وهونر — الاتنين مافيهمش صوت عربي في WebView.
+//  يعني ده مش استثناء نادر، ده **الحالة الشائعة**. والواجهة لازم
+//  تتعامل مع الحالة الشائعة كأمر طبيعي، مش كخطأ.
+//
+//  زر التثبيت فضل موجود لمن يريد، بس من غير ما ياخد نص الشاشة.
+function VoiceWarning({ status, native }) {
   if (status === "ready" || status === "checking") return null;
   return (
-    <div className="rounded-2xl bg-[#FBF3E2] border border-[#D4A853] px-5 py-4 text-sm text-[#6B5A2E] mb-6">
-      <strong className="block mb-1">النطق الآلي غير متاح على هذا الجهاز</strong>
-      {status === "unsupported"
-        ? "المتصفح لا يدعم النطق الآلي."
-        : "مفيش صوت عربي متثبّت على الجهاز، فزرار النطق مش هيطلّع صوت."}{" "}
-      الدروس والاختبارات تعمل بالكامل بدونه (نعتمد على اسم الحرف مكتوبًا).
-      {/* في التطبيق الأصلي نقدر نوّدي المستخدم للشاشة الصح مباشرة
-          بدل ما نقوله "روح الإعدادات" ونسيبه يدوّر. */}
-      {native && status === "missing" ? (
+    <div className="flex items-center justify-center gap-2 text-[11px] text-[#8A7A4E] mb-4">
+      <span aria-hidden="true">🔇</span>
+      <span>الصوت غير متاح — اسم الحرف مكتوب تحته</span>
+      {native && status === "missing" && (
         <button
           onClick={() => openInstallVoices()}
-          className="mt-3 block px-4 py-2 rounded-xl bg-[#1B4D3E] text-[#F5F0E8] text-xs font-bold"
+          className="underline underline-offset-2 font-semibold text-[#1B4D3E] dark:text-[#8FD6C0]"
         >
-          ثبّت صوتًا عربيًا
+          تفعيل
         </button>
-      ) : (
-        <> لتفعيل الصوت: ثبّت حزمة اللغة العربية من إعدادات الجهاز (النطق / Text-to-speech).</>
-      )}
-      <br />
-      <span className="text-[#8A7A4E]">
-        تبويب المصحف التفاعلي غير متأثر — صوته تلاوة حقيقية مسجّلة، مش نطق آلي.
-      </span>
-      {/* السبب الحقيقي من الجهاز. مش زينة — ده اللي بيفرّق بين
-          «مفيش صوت عربي» و«الإضافة نفسها مش بتتحمّل»، وهما محتاجين
-          حلّين مختلفين تمامًا. */}
-      {reason && (
-        <span className="block text-[10px] text-[#A79E86] mt-2" dir="auto">
-          التشخيص: {reason}
-        </span>
       )}
     </div>
   );
@@ -1022,7 +1036,11 @@ function MushafDemo({ settings, updateSettings, pushRecentSurah, khatma, deepSur
   const [pendingAyah, setPendingAyah] = useState(null); // نروح لها بعد ما السورة تحمّل
   const [popup, setPopup] = useState(null); // { word, t, r, x, y }
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [reciterId, setReciterId] = useState(RECITERS[0].id);
+  // الافتراضي مقصود إنه «المعلّم» مش أول واحد في القائمة: «كرّر ورايا»
+  // بيخلّي كل سورة ضعف طولها، وده صح لطفل بيتعلّم وغلط لحد فاتح
+  // المصحف يقرا. فهو أول اختيار **معروض** عشان يبان للمبتدئ،
+  // بس مش المشغَّل تلقائيًا للكل.
+  const [reciterId, setReciterId] = useState("muallim");
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [activeWord, setActiveWord] = useState(null);
@@ -2496,7 +2514,7 @@ function LessonView({ audience, levelId, onClose, onComplete, fontsReady, learni
 
       {phase === "read" && (
         <div className="max-w-3xl w-full mx-auto px-6 pt-3">
-          <VoiceWarning status={status} native={ttsNative} reason={ttsReason} />
+          <VoiceWarning status={status} native={ttsNative} />
         </div>
       )}
 
@@ -2525,11 +2543,14 @@ function LessonView({ audience, levelId, onClose, onComplete, fontsReady, learni
               </div>
             )}
             <p className="text-sm text-[#5B6B62] text-center">
+              {/* من غير صوت، السطر ده كان بيكرّر نفس رسالة التحذير
+                  للمرة التانية في نفس الشاشة. الاسم ظاهر فوق بخط
+                  كبير، فمفيش داعي نقول تاني إنه ظاهر. */}
               {current.ayah
                 ? "المس لسماع التلاوة بصوت الشيخ الحصري"
                 : status === "ready"
                 ? "المس لسماع النطق"
-                : "الاسم مكتوب تحت الشكل — الصوت غير متاح على هذا الجهاز"}
+                : "اتفرّج على شكل الحرف كويس"}
             </p>
             <div className="flex flex-col items-center gap-3">
               <button
@@ -2662,7 +2683,7 @@ export default function App() {
       });
       if (!shown)
         showToast("ﷺ " + SALAWAT_NOTIF.body + " — دوس للعدّاد", () => {
-          setTab("more");
+          goTab("more");
           setSubMore("tasbih");
         });
       const next = { ...live, lastShown: Date.now() };
@@ -2887,8 +2908,7 @@ export default function App() {
   const applyLink = useCallback(
     (l) => {
       if (!l) return;
-      setTab(l.tab || "learn");
-      if (l.sub) setSubMore(l.sub);
+      goTab(l.tab || "learn", l.sub || null);
       if (l.surah) setDeepSurah(l.surah);
       if (l.openLesson) {
         if (l.audience) setAudience(l.audience);
@@ -2972,6 +2992,21 @@ export default function App() {
   tabRef.current = tab;
   const subMoreRef = useRef(subMore);
   subMoreRef.current = subMore;
+
+  // ⚠️ استخدم دي في أي تنقّل بدل setTab المجرّدة.
+  //
+  //  السبب: محتوى كل تبويب بقى مشروط بـ !subMore (عشان الشاشة
+  //  الفرعية تغطّي التبويب). يعني setTab لوحدها بتغيّر التبويب
+  //  **تحت** شاشة فرعية فاضلة مفتوحة — فالمستخدم يدوس ومايحصلش
+  //  حاجة. ده بالظبط اللي حصل مع «علاماتي»: الضغط على علامة كان
+  //  بينقل لتبويب القرآن، والقائمة فاضلة مغطّية الشاشة.
+  //
+  //  goTab بتمسح الشاشة الفرعية دايمًا، أو تفتح وحدة محدّدة لو
+  //  اتبعتت — فمستحيل تسيب الاتنين متعارضين.
+  const goTab = useCallback((t, sub = null) => {
+    setSubMore(sub);
+    setTab(t);
+  }, []);
   useEffect(() => {
     let off = () => {};
     let cancelled = false;
@@ -3149,13 +3184,12 @@ export default function App() {
             settings={settings}
             toArabicDigits={toArabicDigits}
             onStartLesson={() => {
-              if (currentLocked) return setTab("learn");
+              if (currentLocked) return goTab("learn");
               markLessonOpened();
               setLessonOpen(true);
             }}
             onGo={(t, sub, opts) => {
-              setTab(t);
-              if (sub) setSubMore(sub);
+              goTab(t, sub || null);
               if (opts?.surah) setDeepSurah(opts.surah);
             }}
           />
@@ -3374,7 +3408,9 @@ export default function App() {
             toArabicDigits={toArabicDigits}
             onOpen={(page) => {
               updateSettings({ mushafView: "page", lastPage: page });
-              setTab("quran");
+              // goTab مش setTab: لازم قائمة العلامات تتقفل، وإلا
+              // بتفضل مغطّية المصحف اللي إحنا رايحينله.
+              goTab("quran");
             }}
           />
         )}
@@ -3525,7 +3561,7 @@ export default function App() {
             setAudience(a);
             setLevelId(lv);
             updateSettings({ dailyMinutes, onboardedAt: Date.now() });
-            setTab("home");
+            goTab("home");
           }}
         />
       )}

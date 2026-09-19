@@ -16,6 +16,7 @@ import {
   testAthan,
   needsBatteryHint,
   BATTERY_HINT,
+  inspectAthanChannels,
 } from "../utils/nativeAthan.js";
 
 const PRAYER_LIST = PRAYERS.filter((p) => !p.notPrayer);
@@ -49,17 +50,23 @@ export default function Muazzin({ settings, onChange, toArabicDigits, onToast })
   //
   // هنا بنعرض بس العدد المعلّق فعلًا في النظام — مش رقم من الذاكرة.
   // لو عرضنا رقم محلي، هيفضل يقول "متجدول" حتى لو النظام ملغيها.
+  const [channels, setChannels] = useState(null);
+
   useEffect(() => {
     if (!native) return;
     let alive = true;
     const read = () => pendingAthanCount().then((n) => alive && setScheduled(n));
     read();
+    inspectAthanChannels().then((c) => alive && setChannels(c));
     const iv = setInterval(read, 5000);
     return () => {
       alive = false;
       clearInterval(iv);
     };
   }, [native, cfg.enabled, cfg.muezzin]);
+
+  // القناة اللي هتشتغل فعلًا للمؤذّن المختار
+  const activeChannel = channels?.find((c) => c.id === `athan_${cfg.muezzin}_normal`);
 
   useEffect(() => {
     idbGet(STORES.settings, "prayed").then((r) => {
@@ -350,6 +357,21 @@ export default function Muazzin({ settings, onChange, toArabicDigits, onToast })
           >
             🔔 جرّب الأذان دلوقتي
           </button>
+
+          {/* ⚠️ القناة الصامتة بتبان زي القناة الشغّالة بالظبط — نفس
+              الإشعار في وقته، بس من غير صوت. والسبب إن أندرويد ٨+
+              بيقفل صوت القناة وقت إنشائها ومابيتغيّرش إلا بإلغاء
+              التثبيت. فلو حصل، لازم نقولها صريح مع الحل. */}
+          {activeChannel?.silent && (
+            <div className="mt-3 pt-3 border-t border-[#8A4E4E]/30 text-[#8A4E4E]">
+              <strong>🔇 الإشعار هيجي من غير صوت أذان.</strong> قناة الإشعارات
+              اتعملت من غير صوت، وأندرويد <strong>مابيسمحش بتغيير صوت القناة
+              بعد إنشائها</strong>.
+              <br />
+              الحل الوحيد: <strong>ألغِ تثبيت التطبيق وركّبه من جديد</strong> —
+              التحديث فوق القديم مش هينفع.
+            </div>
+          )}
 
           {/* الإرشاد ده بيظهر لأصحاب الأجهزة اللي بتقتل التطبيقات بس.
               من غيره، الجدولة سليمة والمستخدم لسه ممكن يفوّت الأذان
