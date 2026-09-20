@@ -35,6 +35,7 @@ import TafsirAccordion from "./components/TafsirAccordion.jsx";
 import MushafPage from "./components/MushafPage.jsx";
 import BookmarksList from "./components/BookmarksList.jsx";
 import AdhkarScreen from "./components/AdhkarScreen.jsx";
+import HelpScreen from "./components/HelpScreen.jsx";
 import Tasmee3Screen from "./components/Tasmee3Screen.jsx";
 import { loadAyahTranslations, EN_NAME } from "./utils/ayahTranslation.js";
 import {
@@ -144,6 +145,9 @@ const SUB_MENUS = {
     {
       title: "التطبيق",
       items: [
+        // الدليل أول واحد في القسم عن قصد — اللي بيدوّر على
+        // مساعدة بيبص في «المزيد» الأول، ولازم يلاقيه من غير بحث.
+        ["help", "الدليل والملاحظات", "❓"],
         ["settings", "الإعدادات", "⚙️"],
         ["share", "شارك", "📤"],
         ["teacher", "المعلّم", "🔐"],
@@ -3464,6 +3468,8 @@ export default function App() {
             onToast={showToast}
           />
         )}
+
+        {subMore === "help" && <HelpScreen />}
 
         {subMore === "share" && <ShareApp onToast={showToast} />}
 

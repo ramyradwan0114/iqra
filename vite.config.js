@@ -12,10 +12,16 @@ import { VitePWA } from "vite-plugin-pwa";
 // الفايدة العملية: لما نصلّح حاجة وتفضل ظاهرة على الموبايل، الرقم ده
 // بيقول فورًا هل الجهاز شغّال الكود الجديد ولا القديم — بدل ما
 // ندوّر على مشكلة في كود مش متثبّت أصلًا.
-const BUILD_ID = new Date()
-  .toISOString()
-  .slice(0, 16)
-  .replace("T", " ");
+// ⚠️ بالتوقيت المحلي مش UTC.
+// toISOString() بترجّع UTC، ومصر UTC+3 — فالختم كان بيقول ١٢:١٨
+// والساعة على الموبايل ١٥:٣٣. المستخدم يبص يلاقي فرق ٣ ساعات
+// فيفتكر إنه شغّال نسخة قديمة، والنسخة أحدث نسخة أصلًا.
+// الختم المفروض يطابق ساعة الحيطة عشان المقارنة تبقى فورية.
+const pad = (n) => String(n).padStart(2, "0");
+const d = new Date();
+const BUILD_ID =
+  `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
+  `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 
 export default defineConfig({
   define: {
