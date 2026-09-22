@@ -51,13 +51,14 @@ import {
   onNativeNotificationTap,
 } from "./utils/nativeReminders.js";
 import {
-  ensureChannels as ensureAthanChannels,
   requestPermission as askAthanPerm,
-  scheduleAthanForDays,
   onAppResume,
   onHardwareBack,
 } from "./utils/nativeAthan.js";
-import { MUEZZINS, DEFAULT_ATHAN } from "./utils/athan.js";
+// الأذان بقى عبر خدمة أصلية بتشغّل الصوت بنفسها بدل ما تعتمد
+// على صوت الإشعار — شوف التعليق في athanService.js
+import { scheduleAthan as scheduleNativeAthan } from "./utils/athanService.js";
+import { DEFAULT_ATHAN } from "./utils/athan.js";
 import { computeTimes } from "./utils/prayerTimes.js";
 import { probeArabicVoice, speakNative, openInstallVoices } from "./utils/nativeSpeech.js";
 import { dayIndex, dayKey as quizDayKey } from "./utils/dailyQuiz.js";
@@ -2719,10 +2720,10 @@ export default function App() {
 
   const doScheduleAthan = useCallback(async () => {
     if (!dhikrNative || !athanLoc || !athanCfg.enabled) return;
-    await ensureAthanChannels(MUEZZINS);
+    // الإذن لسه مطلوب: الخدمة بتعرض إشعار وهي بتأذّن
     const perm = await askAthanPerm();
     if (perm !== "granted") return;
-    const r = await scheduleAthanForDays(
+    const r = await scheduleNativeAthan(
       (date) =>
         computeTimes({
           lat: athanLoc.lat,
@@ -2795,6 +2796,10 @@ export default function App() {
         enabled: !!(notifForSchedule.enabled && notifForSchedule.kahf),
         hour: NOTIF_KINDS.kahf.hour,
       },
+      // مفعّل افتراضيًا في فترة الاختبار — المختبِر مش هيدوّر على
+      // إعداد عشان يفكّره، والفايدة كلها في إنه يشتغل من غير ما
+      // يتطلب حاجة منه.
+      tester: { enabled: notifForSchedule.tester !== false },
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -2811,6 +2816,7 @@ export default function App() {
     notifForSchedule.evening,
     notifForSchedule.lesson,
     notifForSchedule.kahf,
+    notifForSchedule.tester,
     notifForSchedule.hour,
     notifForSchedule.minute,
   ]);

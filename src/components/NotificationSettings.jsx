@@ -9,6 +9,7 @@ import {
 } from "../utils/notifications.js";
 import { isNative, testDhikr, testNotification } from "../utils/nativeReminders.js";
 import { requestPermission as askNativePerm } from "../utils/nativeAthan.js";
+import { inTesterWindow } from "../utils/testerMode.js";
 
 export default function NotificationSettings({ settings, onChange, toArabicDigits }) {
   const s = { ...DEFAULT_NOTIF_SETTINGS, ...(settings || {}) };
@@ -140,6 +141,29 @@ export default function NotificationSettings({ settings, onChange, toArabicDigit
                     بيقف من ١٠م لـ ٨ص
                   </span>
                 </div>
+              )}
+
+              {/* 🔴 مؤقّت — لفترة الاختبار بس.
+                  بيختفي لوحده بعد TESTER_UNTIL في testerMode.js،
+                  فلو اتنسي مش هيفضل يزنّ على المستخدمين للأبد. */}
+              {inTesterWindow() && (
+                <label className="flex items-center justify-between bg-[#FBF3E2] border border-[#D4A853] rounded-2xl px-4 py-3">
+                  <span>
+                    <span className="font-semibold text-sm block text-[#6B5A2E]">
+                      تذكير فترة الاختبار
+                    </span>
+                    <span className="text-[11px] text-[#8A7A4E]">
+                      ٣ تذكيرات في اليوم — <strong>بس في الأيام اللي ما تفتحش
+                      فيها التطبيق</strong>. بيقف تلقائيًا بعد انتهاء الاختبار.
+                    </span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={s.tester !== false}
+                    onChange={() => onChange({ ...s, tester: s.tester === false })}
+                    className="w-5 h-5 accent-[#D4A853]"
+                  />
+                </label>
               )}
 
               {s.lesson && (

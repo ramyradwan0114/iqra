@@ -19,6 +19,7 @@
 // ============================================================
 import { SALAWAT_TEXT, ADHKAR } from "./reminders.js";
 import { getCachedTranslations } from "./db.js";
+import { testerSlots, inTesterWindow } from "./testerMode.js";
 
 // نفس حسبة الأذان: حد أندرويد ٥٠٠ منبّه للتطبيق كله، والأذان واخد
 // ٣٠٠ منها. فالتذكيرات ليها ميزانية ١٥٠ وهامش ٥٠.
@@ -35,6 +36,7 @@ export const CAPS = {
   adhkar: 30, // ١٥ يوم × نوعين
   lesson: 15,
   kahf: 5, // ٥ جُمَع
+  tester: 45, // ٣ × ١٥ يوم — مؤقّت لفترة الاختبار
 };
 
 // ⚠️ المدى ده **لازم** يفضل برّه مدى الأذان.
@@ -336,6 +338,32 @@ export async function scheduleDhikrReminders(settings = {}) {
       });
     }
     byKind.kahf = slots.length;
+  }
+
+  // ---------- تذكير المختبِرين (مؤقّت) ----------
+  //  بيتجدول من **بكرة** مش النهاردة — اللي بيجدول دلوقتي هو
+  //  التطبيق وهو مفتوح، يعني المستخدم استعمله خلاص. وبما إن
+  //  الجدولة بتتجدّد عند كل فتح، اللي بيفتحه يوميًا مابيشوفش ولا
+  //  إشعار، واللي نسي هو اللي بيتنبّه.
+  //
+  //  🔴 مؤقّت: بيقف لوحده بعد TESTER_UNTIL في testerMode.js
+  if (settings.tester?.enabled && inTesterWindow()) {
+    const slots = testerSlots({ max: CAPS.tester });
+    for (const s of slots) {
+      if (i >= ID_SPAN) break;
+      list.push({
+        id: nextId(),
+        title: s.title,
+        body: s.body,
+        largeBody: s.body,
+        summaryText: "فترة الاختبار",
+        channelId: CHANNELS.gentle.id,
+        autoCancel: true,
+        schedule: { at: s.at, allowWhileIdle: false },
+        extra: { url: s.url, kind: "tester" },
+      });
+    }
+    byKind.tester = slots.length;
   }
 
   // ---------- أذكار الصباح والمساء ----------

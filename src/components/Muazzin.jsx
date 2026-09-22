@@ -10,14 +10,13 @@ import { useLocation, usePrayerTimes } from "../hooks/usePrayerTimes.js";
 import { PRAYERS, fmtTime, countdown } from "../utils/prayerTimes.js";
 import { buzz } from "../hooks/useProgress.js";
 import { idbGet, idbSet, STORES } from "../utils/db.js";
+import { needsBatteryHint, BATTERY_HINT } from "../utils/nativeAthan.js";
 import {
   isNative,
-  pendingAthanCount,
-  testAthan,
-  needsBatteryHint,
-  BATTERY_HINT,
-  inspectAthanChannels,
-} from "../utils/nativeAthan.js";
+  status as athanStatus,
+  playNow as playAthanNow,
+  stopAthan,
+} from "../utils/athanService.js";
 
 const PRAYER_LIST = PRAYERS.filter((p) => !p.notPrayer);
 
@@ -50,14 +49,14 @@ export default function Muazzin({ settings, onChange, toArabicDigits, onToast })
   //
   // هنا بنعرض بس العدد المعلّق فعلًا في النظام — مش رقم من الذاكرة.
   // لو عرضنا رقم محلي، هيفضل يقول "متجدول" حتى لو النظام ملغيها.
-  const [channels, setChannels] = useState(null);
+  // الحالة بتتقرا من النظام نفسه مش من ذاكرة الواجهة
+  const [state, setState] = useState(null);
 
   useEffect(() => {
     if (!native) return;
     let alive = true;
-    const read = () => pendingAthanCount().then((n) => alive && setScheduled(n));
+    const read = () => athanStatus().then((s) => alive && setState(s));
     read();
-    inspectAthanChannels().then((c) => alive && setChannels(c));
     const iv = setInterval(read, 5000);
     return () => {
       alive = false;
@@ -65,8 +64,9 @@ export default function Muazzin({ settings, onChange, toArabicDigits, onToast })
     };
   }, [native, cfg.enabled, cfg.muezzin]);
 
-  // القناة اللي هتشتغل فعلًا للمؤذّن المختار
-  const activeChannel = channels?.find((c) => c.id === `athan_${cfg.muezzin}_normal`);
+  useEffect(() => {
+    setScheduled(state?.upcoming || 0);
+  }, [state]);
 
   useEffect(() => {
     idbGet(STORES.settings, "prayed").then((r) => {
@@ -340,55 +340,46 @@ export default function Muazzin({ settings, onChange, toArabicDigits, onToast })
           {scheduled > 0 && (
             <>
               {" "}
-              اتجدول <strong>{toArabicDigits(scheduled)}</strong> أذان — يعني حوالي{" "}
-              <strong>{toArabicDigits(Math.floor(scheduled / 5))} يوم</strong> قدّام
-              من غير ما تفتح التطبيق. وبتتجدّد لوحدها كل ما تفتحه.
+              فيه <strong>{toArabicDigits(scheduled)}</strong> صلاة جاية متجدولة
+              {state?.next ? (
+                <>
+                  ، وأقربها <strong>{state.nextLabel}</strong> الساعة{" "}
+                  <strong>{fmtTime(new Date(state.next))}</strong>
+                </>
+              ) : null}
+              . الجدولة بتتجدّد بعد كل أذان وعند كل فتح للتطبيق.
             </>
           )}
           <br />
+
+          {/* التشغيل بقى من خدمة التطبيق مش من صوت الإشعار، فالتجربة
+              الصح هي إننا نشغّل الأذان دلوقتي بنفس الطريقة اللي
+              هيشتغل بيها في وقت الصلاة بالظبط. */}
           <button
             onClick={async () => {
-              const okTest = await testAthan(cfg.muezzin, "normal", 5);
-              onToast?.(
-                okTest ? "هيأذّن بعد ٥ ثواني — اقفل التطبيق وجرّب" : "تعذّرت التجربة"
-              );
+              const ok = await playAthanNow(cfg.muezzin, "normal");
+              onToast?.(ok ? "بيأذّن دلوقتي" : "تعذّر التشغيل");
             }}
             className="mt-2 px-3 py-1.5 rounded-lg text-xs font-bold bg-[#1B4D3E] text-[#F5F0E8]"
           >
-            🔔 جرّب الأذان دلوقتي
+            🔔 شغّل الأذان دلوقتي
           </button>
 
-          {/* الاختبار ده هو اللي بيفرّق بين حالتين مختلفتين تمامًا:
-              • تنبيه بعد ٥ ثواني بيشتغل والجهاز لسه صاحي
-              • تنبيه بعد ٥ دقايق والشاشة مقفولة بيدخل الجهاز فيها
-                في وضع السكون — ولو الصوت سكت هنا بس، تبقى المشكلة
-                في تقييد النظام مش في القناة ولا الجدولة. */}
           <button
-            onClick={async () => {
-              const okTest = await testAthan(cfg.muezzin, "normal", 300);
-              onToast?.(
-                okTest
-                  ? "هيأذّن بعد ٥ دقايق — اقفل الشاشة وسيب الموبايل"
-                  : "تعذّرت التجربة"
-              );
-            }}
-            className="mt-2 mr-2 px-3 py-1.5 rounded-lg text-xs font-bold border border-[#1B4D3E] text-[#1B4D3E] dark:text-[#8FD6C0] dark:border-[#8FD6C0]"
+            onClick={() => stopAthan()}
+            className="mt-2 mr-2 px-3 py-1.5 rounded-lg text-xs font-bold border border-[#8A4E4E] text-[#8A4E4E]"
           >
-            ⏱️ جرّب بعد ٥ دقايق
+            ⏹️ إيقاف
           </button>
 
-          {/* ⚠️ القناة الصامتة بتبان زي القناة الشغّالة بالظبط — نفس
-              الإشعار في وقته، بس من غير صوت. والسبب إن أندرويد ٨+
-              بيقفل صوت القناة وقت إنشائها ومابيتغيّرش إلا بإلغاء
-              التثبيت. فلو حصل، لازم نقولها صريح مع الحل. */}
-          {activeChannel?.silent && (
+          {/* ⚠️ من أندرويد ١٢، المستخدم يقدر يمنع المنبّهات المضبوطة
+              من إعدادات النظام. ولو ممنوعة، الأذان هيتأخّر أو يتلغى
+              والتطبيق مش هيعرف يقول ليه — إلا لو فحصنا وقلنا. */}
+          {state && state.exactAllowed === false && (
             <div className="mt-3 pt-3 border-t border-[#8A4E4E]/30 text-[#8A4E4E]">
-              <strong>🔇 الإشعار هيجي من غير صوت أذان.</strong> قناة الإشعارات
-              اتعملت من غير صوت، وأندرويد <strong>مابيسمحش بتغيير صوت القناة
-              بعد إنشائها</strong>.
-              <br />
-              الحل الوحيد: <strong>ألغِ تثبيت التطبيق وركّبه من جديد</strong> —
-              التحديث فوق القديم مش هينفع.
+              <strong>⚠️ المنبّهات المضبوطة متوقّفة لهذا التطبيق.</strong> الأذان
+              هيتأخّر عن وقته. فعّلها من: إعدادات الهاتف ← التطبيقات ← اقرأ ←
+              <strong> المنبّهات والتذكيرات</strong>.
             </div>
           )}
 

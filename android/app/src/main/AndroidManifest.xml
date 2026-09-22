@@ -24,6 +24,33 @@
 
         </activity>
 
+        <!-- خدمة الأذان.
+             من أندرويد ١٤، أي خدمة أمامية لازم يبقى ليها نوع معلن
+             هنا وفي الكود، والاتنين لازم يتطابقوا وإلا التطبيق بيقع
+             وقت التشغيل. النوع mediaPlayback لأن اللي بنعمله حرفيًا
+             هو تشغيل ملف صوت.
+             exported=false: محدش برّه التطبيق محتاج يناديها.
+             ملاحظة: ممنوع حرفين شَرطة ورا بعض جوّه تعليقات XML. -->
+        <service
+            android:name=".AthanService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
+        <!-- مستقبِل المنبّه. exported=false لأن اللي بينادي عليه هو
+             نظام المنبّهات نفسه بـ PendingIntent صريح، مش تطبيق تاني.
+             وبيستقبل كمان إعادة تشغيل الموبايل وتحديث التطبيق عشان
+             يرجّع المنبّهات (بتتمسح في الحالتين). -->
+        <receiver
+            android:name=".AthanReceiver"
+            android:exported="false"
+            android:directBootAware="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -44,6 +71,16 @@
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- خدمة الأذان الأمامية. الإذن التاني مخصوص بنوع mediaPlayback
+         ومطلوب من أندرويد ١٤ — من غيره التطبيق بيقع وقت ما يحاول
+         يشغّل الخدمة. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+
+    <!-- الأذان بياخد دقايق والشاشة مقفولة — القفل ده بيمنع المعالج
+         من النوم وسط التشغيل فيتقطع الصوت. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-feature android:name="android.hardware.microphone" android:required="false" />

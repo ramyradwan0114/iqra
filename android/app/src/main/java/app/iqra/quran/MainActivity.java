@@ -35,6 +35,10 @@ public class MainActivity extends BridgeActivity {
 
   @Override
   public void onCreate(Bundle savedInstanceState) {
+    // ⚠️ لازم قبل نداء الأصل تحت: Capacitor بيبني الجسر جوّاه،
+    // وأي إضافة بتتسجّل بعده مابيشوفهاش الجافاسكربت.
+    registerPlugin(AthanPlugin.class);
+
     super.onCreate(savedInstanceState);
 
     final View content = findViewById(android.R.id.content);
