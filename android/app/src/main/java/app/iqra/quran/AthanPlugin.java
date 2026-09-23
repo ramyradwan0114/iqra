@@ -44,6 +44,7 @@ public class AthanPlugin extends Plugin {
           o.put("at", at);
           o.put("sound", src.optString("sound", ""));
           o.put("label", src.optString("label", "الصلاة"));
+          o.put("volume", src.optDouble("volume", 0.9));
           out.put(o);
         } catch (Exception ignored) {
         }
@@ -79,7 +80,8 @@ public class AthanPlugin extends Plugin {
   public void playNow(PluginCall call) {
     String sound = call.getString("sound", "");
     String label = call.getString("label", "تجربة");
-    AthanService.start(getContext(), sound, label);
+    Double vol = call.getDouble("volume", 0.9);
+    AthanService.start(getContext(), sound, label, vol.floatValue());
     call.resolve();
   }
 

@@ -2732,7 +2732,13 @@ export default function App() {
           madhab: settings?.madhab || "Shafi",
           date,
         }).times,
-      { muezzinId: athanCfg.muezzin, enabled: athanCfg.perPrayer || {} }
+      {
+        muezzinId: athanCfg.muezzin,
+        enabled: athanCfg.perPrayer || {},
+        // مؤشّر الصوت في شاشة المؤذّن هو المتحكّم — أزرار الصوت
+        // في الموبايل مابتأثّرش على قناة المنبّه.
+        volume: athanCfg.volume ?? 0.9,
+      }
     );
     setAthanScheduled(r);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2742,6 +2748,7 @@ export default function App() {
     athanLoc?.lng,
     athanCfg.enabled,
     athanCfg.muezzin,
+    athanCfg.volume,
     settings?.prayerMethod,
     settings?.madhab,
   ]);

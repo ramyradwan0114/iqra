@@ -26,6 +26,7 @@ public class AthanReceiver extends BroadcastReceiver {
 
   public static final String EXTRA_SOUND = "sound";
   public static final String EXTRA_LABEL = "label";
+  public static final String EXTRA_VOLUME = "volume";
 
   @Override
   public void onReceive(Context context, Intent intent) {
@@ -41,9 +42,10 @@ public class AthanReceiver extends BroadcastReceiver {
 
     String sound = intent != null ? intent.getStringExtra(EXTRA_SOUND) : null;
     String label = intent != null ? intent.getStringExtra(EXTRA_LABEL) : null;
+    float vol = intent != null ? intent.getFloatExtra(EXTRA_VOLUME, 0.9f) : 0.9f;
 
     try {
-      AthanService.start(context, sound, label);
+      AthanService.start(context, sound, label, vol);
     } catch (Exception ignored) {
       // لو النظام رفض تشغيل الخدمة لأي سبب، مانكسّرش التطبيق.
       // المنبّهات الباقية بتفضل مجدولة زي ما هي.

@@ -45,6 +45,7 @@ public class AthanService extends Service {
 
   public static final String EXTRA_SOUND = "sound";   // اسم الملف في res/raw
   public static final String EXTRA_LABEL = "label";   // «الفجر» مثلًا
+  public static final String EXTRA_VOLUME = "volume"; // 0.0 .. 1.0
 
   private static final String CHANNEL_ID = "athan_playback";
   private static final int NOTIF_ID = 7777;
@@ -68,6 +69,7 @@ public class AthanService extends Service {
 
     String sound = intent != null ? intent.getStringExtra(EXTRA_SOUND) : null;
     String label = intent != null ? intent.getStringExtra(EXTRA_LABEL) : null;
+    float vol = intent != null ? intent.getFloatExtra(EXTRA_VOLUME, 0.9f) : 0.9f;
     if (label == null) label = "الصلاة";
 
     // لازم نبقى أمامية **فورًا**، وإلا أندرويد بيرمي استثناء
@@ -79,14 +81,14 @@ public class AthanService extends Service {
     // بمجرد ما الصوت يخلص.
     acquireWake();
 
-    play(sound);
+    play(sound, vol);
     return START_NOT_STICKY;
   }
 
   // ------------------------------------------------------------
   //  التشغيل
   // ------------------------------------------------------------
-  private void play(String soundName) {
+  private void play(String soundName, float volume) {
     stopPlayer();
 
     int resId = 0;
@@ -112,6 +114,18 @@ public class AthanService extends Service {
 
       Uri uri = Uri.parse("android.resource://" + getPackageName() + "/" + resId);
       player.setDataSource(this, uri);
+
+      // ⚠️ ليه بنضبط الصوت من هنا:
+      // بنشغّل على قناة المنبّه (USAGE_ALARM) عشان الأذان يعدّي
+      // وضع «عدم الإزعاج». لكن أزرار الصوت في الموبايل بتتحكّم في
+      // قناة الوسائط، فالمستخدم مش بيقدر يخفّض الأذان بيها — وده
+      // مشكلة حقيقية في أذان الفجر.
+      //
+      // فبنخلّي مؤشّر الصوت اللي جوّه التطبيق هو المتحكّم. المستخدم
+      // يظبّطه مرة ويسري على كل أذان بعدها.
+      float v = Math.max(0f, Math.min(1f, volume));
+      player.setVolume(v, v);
+
       player.setLooping(false);
       player.setOnCompletionListener(mp -> stopEverything());
       player.setOnErrorListener((mp, what, extra) -> {
@@ -241,11 +255,12 @@ public class AthanService extends Service {
   }
 
   /** طريقة مختصرة لتشغيل الخدمة من أي مكان. */
-  public static void start(Context ctx, String sound, String label) {
+  public static void start(Context ctx, String sound, String label, float volume) {
     Intent i = new Intent(ctx, AthanService.class)
         .setAction(ACTION_PLAY)
         .putExtra(EXTRA_SOUND, sound)
-        .putExtra(EXTRA_LABEL, label);
+        .putExtra(EXTRA_LABEL, label)
+        .putExtra(EXTRA_VOLUME, volume);
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
       ctx.startForegroundService(i);
     } else {

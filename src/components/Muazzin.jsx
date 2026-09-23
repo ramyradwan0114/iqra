@@ -13,6 +13,7 @@ import { idbGet, idbSet, STORES } from "../utils/db.js";
 import { needsBatteryHint, BATTERY_HINT } from "../utils/nativeAthan.js";
 import {
   isNative,
+  pluginReady,
   status as athanStatus,
   playNow as playAthanNow,
   stopAthan,
@@ -38,8 +39,20 @@ export default function Muazzin({ settings, onChange, toArabicDigits, onToast })
 
   const today = prayerDayKey();
 
+  // ready = الإضافة نفسها شغّالة. native = إحنا على تطبيق أصلي.
+  // الاتنين منفصلين عشان لو الإضافة فشلت نقول ده صريح، بدل ما
+  // نعرض رسالة «نسخة المتصفّح» على تطبيق أصلي.
+  // الاسم svcReady مش ready: ready متاخد خلاص من usePrayerTimes فوق
+  // (جاهزية المواقيت)، وده معنى مختلف تمامًا.
+  const [svcReady, setSvcReady] = useState(false);
+  const [reason, setReason] = useState(null);
+
   useEffect(() => {
     isNative().then(setNative);
+    pluginReady().then((r) => {
+      setSvcReady(r.ok);
+      setReason(r.reason);
+    });
   }, []);
 
   // ⚠️ الجدولة **مابقتش هنا**. كانت في المكوّن ده، والمكوّن مابيتركّبش
@@ -334,7 +347,22 @@ export default function Muazzin({ settings, onChange, toArabicDigits, onToast })
 
       {/* الحالة بتتغيّر حسب النسخة: نسخة المتجر بتجدول أذانًا حقيقيًا،
           ونسخة الويب لأ. مهم نقول الحقيقة لكل واحدة بدل رسالة واحدة. */}
-      {native ? (
+      {/* الإضافة فشلت على تطبيق أصلي — حالة لازم تتقال صريح.
+          قبل كده كانت بتتخلط مع «نسخة المتصفّح» فالمستخدم يفتكر
+          إن ده سلوك طبيعي، وإحنا ندوّر على مشكلة في مكان غلط. */}
+      {native && !svcReady && (
+        <div className="text-[11px] text-[#8A4E4E] bg-[#FBEDED] rounded-xl px-4 py-3 leading-relaxed mb-3">
+          <strong>⚠️ خدمة الأذان مش متاحة.</strong> التطبيق أصلي لكن الإضافة
+          ماشتغلتش.
+          {reason && (
+            <span className="block text-[10px] text-[#A79E86] mt-1.5" dir="auto">
+              التشخيص: {reason}
+            </span>
+          )}
+        </div>
+      )}
+
+      {native && svcReady ? (
         <div className="text-[11px] text-[#1B4D3E] dark:text-[#8FD6C0] bg-[#2E9E6B]/15 rounded-xl px-4 py-3 leading-relaxed">
           ✅ الأذان مجدوَل في نظام الجهاز — <strong>هيأذّن في وقته والتطبيق مقفول</strong>.
           {scheduled > 0 && (
@@ -357,7 +385,7 @@ export default function Muazzin({ settings, onChange, toArabicDigits, onToast })
               هيشتغل بيها في وقت الصلاة بالظبط. */}
           <button
             onClick={async () => {
-              const ok = await playAthanNow(cfg.muezzin, "normal");
+              const ok = await playAthanNow(cfg.muezzin, "normal", cfg.volume ?? 0.9);
               onToast?.(ok ? "بيأذّن دلوقتي" : "تعذّر التشغيل");
             }}
             className="mt-2 px-3 py-1.5 rounded-lg text-xs font-bold bg-[#1B4D3E] text-[#F5F0E8]"
@@ -398,14 +426,14 @@ export default function Muazzin({ settings, onChange, toArabicDigits, onToast })
             </div>
           )}
         </div>
-      ) : (
+      ) : !native ? (
         <p className="text-[11px] text-[#6B5A2E] bg-[#FBF3E2] rounded-xl px-4 py-3 leading-relaxed">
           في نسخة المتصفّح الأذان بيشتغل <strong>والتطبيق مفتوح بس</strong> — المتصفّح
           مابيسمحش بتشغيل صوت وهو مقفول، ودي حدود المتصفّح مش نقص في التطبيق.
           <strong> نسخة جوجل بلاي بتأذّن في وقتها والتطبيق مقفول</strong>، لأن نظام
           أندرويد هو اللي بيجدول الأذان.
         </p>
-      )}
+      ) : null}
     </div>
   );
 }

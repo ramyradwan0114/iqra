@@ -93,10 +93,13 @@ public class AthanAlarms {
 
       String sound = o.optString("sound", "");
       String label = o.optString("label", "الصلاة");
+      // الصوت متخزّن مع كل موعد عشان يفضل شغّال بعد إعادة التشغيل
+      double vol = o.optDouble("volume", 0.9);
 
       Intent fire = new Intent(ctx, AthanReceiver.class)
           .putExtra(AthanReceiver.EXTRA_SOUND, sound)
-          .putExtra(AthanReceiver.EXTRA_LABEL, label);
+          .putExtra(AthanReceiver.EXTRA_LABEL, label)
+          .putExtra(AthanReceiver.EXTRA_VOLUME, (float) vol);
 
       int flags = PendingIntent.FLAG_UPDATE_CURRENT;
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {

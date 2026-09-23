@@ -18,17 +18,86 @@
 //  في المتصفّح كل الدوال بترجّع قيم فاضية بهدوء.
 // ============================================================
 
+// السبب الحقيقي لو حاجة فشلت — بيتعرض في الواجهة بدل ما نخمّن.
+let lastReason = "لسه ما اتفحصش";
+
+// ============================================================
+//  الوصول للإضافة
+// ------------------------------------------------------------
+//  ⚠️ بنقرا من window.Capacitor مباشرة، **من غير أي import**.
+//
+//  السبب: النسخة اللي قبلها كانت بتعمل
+//      const { registerPlugin } = await import("@capacitor/core")
+//  وده بيخلّي نجاح الكود معتمد على إزاي أداة الحزم تعاملت مع
+//  الاستيراد الديناميكي وتصدير الأسماء. النتيجة كانت إن التطبيق
+//  الأصلي يقول «الإضافة ماشتغلتش» من غير سبب واضح.
+//
+//  الجسر الأصلي بيحقن window.Capacitor و window.Capacitor.Plugins
+//  في الصفحة **قبل** ما كود التطبيق يشتغل. القراءة منهم مباشرة
+//  مالهاش علاقة بالحزم خالص — وده أبسط وأضمن.
+//
+//  registerPlugin سايبينها كخطة بديلة بس، مش الطريق الأساسي.
+// ============================================================
+
+function bridge() {
+  return typeof window !== "undefined" ? window.Capacitor : null;
+}
+
+function nativeNow() {
+  try {
+    return bridge()?.isNativePlatform?.() === true;
+  } catch {
+    return false;
+  }
+}
+
 let apiPromise = null;
 
 function api() {
   if (apiPromise) return apiPromise;
   apiPromise = (async () => {
+    if (!nativeNow()) {
+      lastReason = "نسخة متصفّح";
+      return null;
+    }
+
+    // الطريق الأساسي: الإضافة محقونة في الجسر
+    let p = null;
     try {
-      const { Capacitor, registerPlugin } = await import("@capacitor/core");
-      if (!Capacitor?.isNativePlatform?.()) return null;
-      // الاسم لازم يطابق @CapacitorPlugin(name = "Athan") في الجافا
-      return registerPlugin("Athan");
-    } catch {
+      p = bridge()?.Plugins?.Athan || null;
+    } catch {}
+
+    // الخطة البديلة: registerPlugin — لو الجسر مابيحقنش الأسماء
+    if (!p) {
+      try {
+        const core = await import("@capacitor/core");
+        if (typeof core.registerPlugin === "function") {
+          p = core.registerPlugin("Athan");
+        }
+      } catch (e) {
+        lastReason = "فشل تحميل Capacitor: " + (e?.message || e);
+      }
+    }
+
+    if (!p) {
+      let names = [];
+      try {
+        names = Object.keys(bridge()?.Plugins || {});
+      } catch {}
+      lastReason = names.length
+        ? `الجسر مش شايف Athan. الموجود: ${names.join(", ")}`
+        : "الجسر مش شايف أي إضافة";
+      return null;
+    }
+
+    // نداء حقيقي: أضمن من مجرد وجود الكائن — الوكيل بيتعمل حتى
+    // لو الجافا ماسجّلتش الإضافة، والفشل ساعتها بيظهر عند أول نداء.
+    try {
+      await p.status();
+      lastReason = "الإضافة جاهزة";
+      return p;
+    } catch (e) {
+      lastReason = "نداء الإضافة فشل: " + (e?.message || e);
       return null;
     }
   })();
@@ -36,7 +105,20 @@ function api() {
 }
 
 export async function isNative() {
-  return !!(await api());
+  return nativeNow();
+}
+
+/**
+ * هل إضافة الأذان نفسها شغّالة؟ بترجّع { ok, reason }.
+ *
+ * ⚠️ بترجّع السبب **في نفس القيمة** مش من متغيّر مصدَّر.
+ * جرّبنا `export let lastReason` والاستيراد منه — والرابط الحيّ
+ * ده مابيوصلش بعد الحزم، فالواجهة كانت بتعرض «الإضافة ماشتغلتش»
+ * من غير أي سبب. القيمة المرجَّعة مافيهاش الالتباس ده.
+ */
+export async function pluginReady() {
+  const p = await api();
+  return { ok: !!p, reason: lastReason };
 }
 
 // اسم ملف الصوت جوّه res/raw من غير امتداد
@@ -56,7 +138,7 @@ export function soundNameFor(muezzinId, kind) {
  */
 export async function scheduleAthan(
   computeForDate,
-  { muezzinId = "haram", enabled = {}, days = 7, now = new Date() } = {}
+  { muezzinId = "haram", enabled = {}, volume = 0.9, days = 7, now = new Date() } = {}
 ) {
   const a = await api();
   if (!a) return { saved: 0, scheduled: 0, exactAllowed: true };
@@ -94,6 +176,9 @@ export async function scheduleAthan(
         // الفجر له أذان مختلف فيه التثويب
         sound: soundNameFor(muezzinId, p.id === "fajr" ? "fajr" : "normal"),
         label: p.label,
+        // أزرار الصوت في الموبايل مابتأثّرش على قناة المنبّه،
+        // فمؤشّر الصوت اللي في التطبيق هو المتحكّم الوحيد.
+        volume,
       });
     }
   }
@@ -131,11 +216,11 @@ export async function stopAthan() {
 }
 
 /** تشغيل الأذان فورًا — لتجربة الصوت نفسه */
-export async function playNow(muezzinId, kind = "normal") {
+export async function playNow(muezzinId, kind = "normal", volume = 0.9) {
   const a = await api();
   if (!a) return false;
   try {
-    await a.playNow({ sound: soundNameFor(muezzinId, kind), label: "تجربة" });
+    await a.playNow({ sound: soundNameFor(muezzinId, kind), label: "تجربة", volume });
     return true;
   } catch {
     return false;
